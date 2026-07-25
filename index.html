@@ -7,8 +7,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- PDF.js for rendering PDFs directly in the app -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* 🛡️ ULTRA SECURE - PREVENT ALL COPYING */
         * {
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
@@ -19,25 +20,12 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* Prevent long press on images and links */
-        img, a, button {
-            -webkit-touch-callout: none !important;
-            pointer-events: auto !important;
-        }
-        
         body { 
             overflow-x: hidden; 
             touch-action: pan-y; 
             background-color: #05070f !important; 
             color: #f8fafc !important; 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
-        
-        /* IFrame security - prevent interactions */
-        iframe {
-            pointer-events: auto !important;
-            -webkit-user-select: none !important;
-            user-select: none !important;
         }
         
         .text-gradient {
@@ -96,30 +84,48 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* PDF Viewer - fully locked down */
+        /* PDF Viewer styles */
         .pdf-viewer-container {
             background: #0f1123;
             position: relative;
+            height: 100%;
+            overflow-y: auto;
         }
         
-        /* Overlay to prevent any right-click or context menu on PDF */
-        .pdf-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 5;
-            background: transparent;
-            pointer-events: none;
+        .pdf-page-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            gap: 10px;
         }
         
-        /* Watermark hint - visible but transparent */
+        .pdf-page {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .pdf-page canvas {
+            width: 100% !important;
+            height: auto !important;
+            border-radius: 8px;
+        }
+        
+        /* Disable selection on canvas */
+        canvas {
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            pointer-events: none !important;
+        }
+        
         .watermark-hint {
-            position: absolute;
-            bottom: 20px;
+            position: fixed;
+            bottom: 80px;
             right: 20px;
-            color: rgba(99, 102, 241, 0.1);
+            color: rgba(99, 102, 241, 0.08);
             font-size: 10px;
             font-weight: bold;
             letter-spacing: 2px;
@@ -128,10 +134,73 @@
             transform: rotate(-15deg);
         }
         
-        /* Disable selection on viewer */
-        .viewer-content {
-            -webkit-user-select: none !important;
-            user-select: none !important;
+        /* Page navigation */
+        .page-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 10px;
+            background: #0f1123;
+            border-top: 1px solid #1e293b;
+        }
+        
+        .page-nav button {
+            padding: 6px 16px;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #94a3b8;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .page-nav button:active {
+            transform: scale(0.95);
+        }
+        
+        .page-nav button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .page-nav span {
+            color: #94a3b8;
+            font-size: 12px;
+        }
+        
+        /* Zoom controls */
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #0f1123;
+            border-radius: 12px;
+            border: 1px solid #1e293b;
+        }
+        
+        .zoom-controls button {
+            padding: 4px 12px;
+            border-radius: 6px;
+            background: #1e293b;
+            color: #94a3b8;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .zoom-controls button:active {
+            transform: scale(0.95);
+        }
+        
+        .zoom-controls span {
+            color: #94a3b8;
+            font-size: 12px;
+            min-width: 40px;
+            text-align: center;
         }
     </style>
 </head>
@@ -185,46 +254,47 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
-            <!-- SECURE PDF VIEWER - NO COPY/NO DOWNLOAD -->
-            <div id="screen-pdf-viewer" class="hidden space-y-3 h-[calc(100vh-140px)] flex flex-col">
-                <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
+            <!-- PDF VIEWER - Renders PDF directly in the app -->
+            <div id="screen-pdf-viewer" class="hidden flex flex-col h-[calc(100vh-140px)]">
+                <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900 mb-2">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform hover:text-white">
                         ⬅ ወደ ኋላ መመለሻ
                     </button>
-                    <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[160px]">Course</span>
+                    <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">Course</span>
                     <span class="text-[9px] text-[#6366f1] opacity-50">🔒</span>
                 </div>
                 
-                <!-- SECURE VIEWER - Google Docs Embedded with restrictions -->
-                <div class="flex-1 w-full rounded-xl overflow-hidden border border-slate-800 relative pdf-viewer-container">
-                    <!-- Transparent overlay to block any interactions that could lead to copying -->
-                    <div class="pdf-overlay" id="pdfOverlay"></div>
-                    
-                    <!-- Loading spinner -->
-                    <div id="iframe-loader" class="absolute inset-0 flex items-center justify-center bg-[#05070f] z-10">
+                <!-- PDF Rendering Area -->
+                <div id="pdf-render-area" class="flex-1 rounded-xl overflow-hidden border border-slate-800 relative pdf-viewer-container">
+                    <!-- Loading -->
+                    <div id="pdf-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-[#05070f] z-10">
                         <div class="loading-spinner"></div>
-                        <p class="text-slate-400 text-xs mt-4 absolute bottom-20">Loading secure content...</p>
+                        <p class="text-slate-400 text-xs mt-4">Loading secure content...</p>
+                        <p class="text-slate-600 text-[10px] mt-2">This may take a moment</p>
                     </div>
+                    
+                    <!-- PDF Pages Container -->
+                    <div id="pdf-pages-container" class="pdf-page-container" style="display:none;"></div>
                     
                     <!-- Watermark -->
                     <div class="watermark-hint">🔒 READ ONLY</div>
-                    
-                    <!-- SECURE IFRAME - Google Docs Viewer with embed mode -->
-                    <iframe id="secure-google-preview-frame" 
-                            src="" 
-                            class="w-full h-full border-0" 
-                            allow="autoplay; encrypted-media" 
-                            sandbox="allow-scripts allow-same-origin allow-forms"
-                            loading="lazy"
-                            referrerpolicy="no-referrer">
-                    </iframe>
+                </div>
+                
+                <!-- Navigation Controls -->
+                <div id="pdf-controls" class="page-nav" style="display:none;">
+                    <button id="prev-page" disabled>◀ Previous</button>
+                    <span id="page-info">Page 1 / 1</span>
+                    <button id="next-page" disabled>Next ▶</button>
+                    <div class="zoom-controls">
+                        <button id="zoom-out">−</button>
+                        <span id="zoom-level">100%</span>
+                        <button id="zoom-in">+</button>
+                    </div>
                 </div>
                 
                 <!-- Security notice -->
-                <div class="flex items-center justify-center gap-2 p-1">
-                    <span class="text-[8px] text-slate-600">🔒</span>
-                    <span class="text-[8px] text-slate-600">Content is protected - Copying & Downloading disabled</span>
-                    <span class="text-[8px] text-slate-600">🔒</span>
+                <div class="flex items-center justify-center gap-2 p-1 mt-1">
+                    <span class="text-[8px] text-slate-600">🔒 Content is protected - Copying & Downloading disabled</span>
                 </div>
             </div>
         </main>
@@ -290,25 +360,31 @@
             }
         ];
 
-        // Function to get secure Google Docs viewer URL (NO DOWNLOAD/COPY)
-        function getSecureGoogleDocsViewerUrl(fileId) {
-            // Using Google Docs viewer with embedded mode - prevents download
-            return `https://docs.google.com/gview?embedded=true&url=https://drive.google.com/uc?id=${fileId}&export=download&rm=minimal`;
-        }
-
+        // ============================================
         // DOM REFERENCE VARIABLES
+        // ============================================
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const sidebarLinksTarget = document.getElementById('sidebar-links-target');
         const searchInput = document.getElementById('course-filter-input');
         const viewDashboard = document.getElementById('screen-dashboard');
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
         const wrapperSearchBox = document.getElementById('search-box-container');
-        const secureFrame = document.getElementById('secure-google-preview-frame');
         const activeCourseText = document.getElementById('active-course-banner-text');
-        const iframeLoader = document.getElementById('iframe-loader');
-        const pdfOverlay = document.getElementById('pdfOverlay');
+        const pdfLoader = document.getElementById('pdf-loader');
+        const pdfPagesContainer = document.getElementById('pdf-pages-container');
+        const pdfControls = document.getElementById('pdf-controls');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const pageInfo = document.getElementById('page-info');
+        const zoomInBtn = document.getElementById('zoom-in');
+        const zoomOutBtn = document.getElementById('zoom-out');
+        const zoomLevel = document.getElementById('zoom-level');
 
         let currentCourse = null;
+        let pdfDoc = null;
+        let currentPage = 1;
+        let currentZoom = 1.0;
+        let totalPages = 0;
 
         // ============================================
         // DASHBOARD MOUNT FUNCTION
@@ -348,7 +424,7 @@
                     <span class="text-[#00f2fe] font-bold text-xs opacity-70 group-hover:opacity-100">📖 አንብብ</span>
                 `;
                 
-                uiTileNode.addEventListener('click', () => openSecureViewer(course));
+                uiTileNode.addEventListener('click', () => openPdfViewer(course));
                 dashboardGrid.appendChild(uiTileNode);
             });
         }
@@ -369,138 +445,173 @@
                 `;
                 navRowElement.addEventListener('click', () => {
                     toggleSidebar(false);
-                    openSecureViewer(course);
+                    openPdfViewer(course);
                 });
                 sidebarLinksTarget.appendChild(navRowElement);
             });
         }
 
         // ============================================
-        // SECURE VIEWER - NO COPY/NO DOWNLOAD
+        // OPEN PDF VIEWER - Renders PDF inside the app
         // ============================================
-        function openSecureViewer(course) {
+        function openPdfViewer(course) {
             currentCourse = course;
             
             viewDashboard.classList.add('hidden');
             wrapperSearchBox.classList.add('hidden');
             viewPdfViewer.classList.remove('hidden');
+            viewPdfViewer.style.display = 'flex';
             activeCourseText.innerText = `${course.emoji} ${course.name}`;
             
-            // Show loader
-            iframeLoader.classList.remove('hidden');
-            secureFrame.style.display = 'none';
+            // Show loader, hide pages
+            pdfLoader.style.display = 'flex';
+            pdfPagesContainer.style.display = 'none';
+            pdfControls.style.display = 'none';
             
-            // Use secure Google Docs Viewer
-            const secureUrl = getSecureGoogleDocsViewerUrl(course.fileId);
-            secureFrame.src = secureUrl;
+            // Clear previous PDF
+            pdfPagesContainer.innerHTML = '';
             
-            // Hide loader when iframe loads
-            secureFrame.onload = function() {
-                iframeLoader.classList.add('hidden');
-                secureFrame.style.display = 'block';
-                
-                // Inject additional security to disable right-click in iframe
-                try {
-                    const iframeDoc = secureFrame.contentDocument || secureFrame.contentWindow.document;
-                    if (iframeDoc) {
-                        // Disable context menu in iframe
-                        iframeDoc.addEventListener('contextmenu', function(e) {
-                            e.preventDefault();
-                            return false;
-                        });
-                        
-                        // Disable selection in iframe
-                        iframeDoc.addEventListener('selectstart', function(e) {
-                            e.preventDefault();
-                            return false;
-                        });
-                        
-                        // Disable copy in iframe
-                        iframeDoc.addEventListener('copy', function(e) {
-                            e.preventDefault();
-                            return false;
-                        });
-                    }
-                } catch(e) {
-                    // Cross-origin iframe - can't inject, but Google Docs Viewer already prevents copying
-                    console.log('Secure viewer loaded');
-                }
-            };
+            // Load PDF using PDF.js
+            loadPdf(course.fileId);
+        }
+
+        // ============================================
+        // LOAD PDF USING PDF.JS
+        // ============================================
+        function loadPdf(fileId) {
+            // Use Google Drive's direct download link
+            const pdfUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
             
-            // If Google Docs Viewer fails, use a secure fallback
-            setTimeout(() => {
-                if (iframeLoader.classList.contains('hidden') === false) {
-                    // Use a different secure method
-                    const fallbackUrl = `https://drive.google.com/file/d/${course.fileId}/preview?usp=drive_web&rm=minimal`;
-                    secureFrame.src = fallbackUrl;
+            // Set up PDF.js worker
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            
+            // Load the PDF
+            pdfjsLib.getDocument(pdfUrl).promise
+                .then(function(pdf) {
+                    pdfDoc = pdf;
+                    totalPages = pdf.numPages;
+                    currentPage = 1;
                     
-                    secureFrame.onload = function() {
-                        iframeLoader.classList.add('hidden');
-                        secureFrame.style.display = 'block';
-                    };
-                }
-            }, 5000);
+                    // Hide loader, show pages
+                    pdfLoader.style.display = 'none';
+                    pdfPagesContainer.style.display = 'flex';
+                    pdfControls.style.display = 'flex';
+                    
+                    // Render first page
+                    renderPage(currentPage);
+                    updateControls();
+                    
+                    console.log(`✅ PDF loaded: ${totalPages} pages`);
+                })
+                .catch(function(error) {
+                    console.error('Error loading PDF:', error);
+                    pdfLoader.innerHTML = `
+                        <div class="text-center">
+                            <div class="text-4xl mb-4">⚠️</div>
+                            <p class="text-slate-300 text-sm font-bold">Failed to load PDF</p>
+                            <p class="text-slate-500 text-xs mt-2">Please try again or check your connection</p>
+                            <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-[#6366f1] rounded-xl text-xs font-bold text-white active:scale-95 transition-all">
+                                🔄 Retry
+                            </button>
+                        </div>
+                    `;
+                    pdfLoader.style.display = 'flex';
+                });
+        }
+
+        // ============================================
+        // RENDER A SINGLE PAGE
+        // ============================================
+        function renderPage(pageNum) {
+            if (!pdfDoc) return;
             
-            // Handle iframe load error
-            secureFrame.onerror = function() {
-                iframeLoader.classList.add('hidden');
-                secureFrame.style.display = 'block';
-                // Show secure error message
-                secureFrame.srcdoc = `
-                    <html>
-                        <head>
-                            <style>
-                                body {
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    height:100vh;
-                                    background:#0f1123;
-                                    color:#94a3b8;
-                                    font-family:sans-serif;
-                                    text-align:center;
-                                    padding:20px;
-                                    margin:0;
-                                }
-                                .error-box {
-                                    max-width:300px;
-                                }
-                                .lock-icon {
-                                    font-size:48px;
-                                    margin-bottom:16px;
-                                }
-                                h2 {
-                                    font-size:18px;
-                                    color:#e2e8f0;
-                                    margin-bottom:8px;
-                                }
-                                p {
-                                    font-size:13px;
-                                    color:#64748b;
-                                    line-height:1.6;
-                                }
-                                .security-badge {
-                                    display:inline-block;
-                                    margin-top:16px;
-                                    padding:6px 16px;
-                                    background:#1e293b;
-                                    border-radius:20px;
-                                    font-size:10px;
-                                    color:#6366f1;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="error-box">
-                                <div class="lock-icon">🔒</div>
-                                <h2>Secure Content Load Failed</h2>
-                                <p>This content is protected and can only be viewed within the secure viewer.</p>
-                                <div class="security-badge">⚡ READ ONLY • NO COPY • NO DOWNLOAD</div>
-                            </div>
-                        </body>
-                    </html>
-                `;
-            };
+            // Clear container
+            pdfPagesContainer.innerHTML = '';
+            
+            // Get the page
+            pdfDoc.getPage(pageNum).then(function(page) {
+                const viewport = page.getViewport({ scale: currentZoom });
+                
+                // Create canvas
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                // Disable right-click on canvas
+                canvas.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // Render page
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                
+                page.render(renderContext).promise.then(function() {
+                    // Canvas is rendered
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'pdf-page';
+                    wrapper.appendChild(canvas);
+                    pdfPagesContainer.appendChild(wrapper);
+                    
+                    // Update page info
+                    pageInfo.textContent = `Page ${pageNum} / ${totalPages}`;
+                    
+                    // Update buttons
+                    prevPageBtn.disabled = pageNum <= 1;
+                    nextPageBtn.disabled = pageNum >= totalPages;
+                });
+            }).catch(function(error) {
+                console.error('Error rendering page:', error);
+            });
+        }
+
+        // ============================================
+        // UPDATE CONTROLS
+        // ============================================
+        function updateControls() {
+            prevPageBtn.disabled = currentPage <= 1;
+            nextPageBtn.disabled = currentPage >= totalPages;
+            pageInfo.textContent = `Page ${currentPage} / ${totalPages}`;
+            zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        // ============================================
+        // NAVIGATION FUNCTIONS
+        // ============================================
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+                updateControls();
+            }
+        }
+
+        function goToNextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage(currentPage);
+                updateControls();
+            }
+        }
+
+        function zoomIn() {
+            if (currentZoom < 2.5) {
+                currentZoom += 0.2;
+                renderPage(currentPage);
+                updateControls();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom > 0.4) {
+                currentZoom -= 0.2;
+                renderPage(currentPage);
+                updateControls();
+            }
         }
 
         // ============================================
@@ -557,7 +668,7 @@
                     Telegram.WebApp.ready();
                     Telegram.WebApp.expand();
                     Telegram.WebApp.enableClosingConfirmation();
-                    console.log('✅ Telegram WebApp initialized securely');
+                    console.log('✅ Telegram WebApp initialized');
                 } catch (error) {
                     console.warn('⚠️ Telegram WebApp error:', error);
                 }
@@ -568,49 +679,35 @@
         // PREVENT ALL COPYING METHODS
         // ============================================
         function preventCopying() {
-            // Prevent Ctrl+C, Ctrl+V, Ctrl+P, etc.
             document.addEventListener('keydown', function(e) {
-                // Check for Ctrl/Command + C/V/P/S/U
                 if ((e.ctrlKey || e.metaKey) && 
                     (e.key === 'c' || e.key === 'v' || e.key === 'p' || 
                      e.key === 's' || e.key === 'u' || e.key === 'a')) {
                     e.preventDefault();
                     return false;
                 }
-                
-                // Prevent F12 (DevTools)
                 if (e.key === 'F12') {
                     e.preventDefault();
                     return false;
                 }
             });
             
-            // Prevent context menu (right-click)
             document.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 return false;
             });
             
-            // Prevent selection
             document.addEventListener('selectstart', function(e) {
                 e.preventDefault();
                 return false;
             });
             
-            // Prevent copy
             document.addEventListener('copy', function(e) {
                 e.preventDefault();
                 return false;
             });
             
-            // Prevent drag
             document.addEventListener('dragstart', function(e) {
-                e.preventDefault();
-                return false;
-            });
-            
-            // Prevent cut
-            document.addEventListener('cut', function(e) {
                 e.preventDefault();
                 return false;
             });
@@ -637,28 +734,37 @@
             });
 
             document.getElementById('close-viewer-btn').addEventListener('click', () => {
+                viewPdfViewer.style.display = 'none';
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
                 wrapperSearchBox.classList.remove('hidden');
-                secureFrame.src = '';
-                secureFrame.onload = null;
-                secureFrame.onerror = null;
-                iframeLoader.classList.remove('hidden');
-                currentCourse = null;
+                pdfDoc = null;
+                currentPage = 1;
+                currentZoom = 1.0;
+                totalPages = 0;
+                pdfPagesContainer.innerHTML = '';
+                pdfLoader.style.display = 'flex';
+                pdfLoader.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p class="text-slate-400 text-xs mt-4">Loading secure content...</p>
+                    <p class="text-slate-600 text-[10px] mt-2">This may take a moment</p>
+                `;
                 mountDashboardInterface(searchInput.value);
             });
 
             document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
 
-            // Handle escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    if (!document.getElementById('sidebar-panel').classList.contains('-translate-x-full')) {
-                        toggleSidebar(false);
-                    }
-                    if (!viewPdfViewer.classList.contains('hidden')) {
-                        document.getElementById('close-viewer-btn').click();
-                    }
+            // PDF Navigation
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+            zoomInBtn.addEventListener('click', zoomIn);
+            zoomOutBtn.addEventListener('click', zoomOut);
+
+            // Keyboard shortcuts for PDF navigation
+            document.addEventListener('keydown', function(e) {
+                if (!viewPdfViewer.classList.contains('hidden')) {
+                    if (e.key === 'ArrowLeft') goToPrevPage();
+                    if (e.key === 'ArrowRight') goToNextPage();
                 }
             });
 
@@ -674,21 +780,14 @@
         // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize security
             preventCopying();
-            
-            // Initialize Telegram
             initTelegramWebApp();
-            
-            // Mount UI
             mountDashboardInterface('');
             mountSidebarNavigation();
-            
-            // Setup events
             setupEventListeners();
 
-            console.log('✅ FreshmanHub secured and initialized');
-            console.log(`📚 ${APPLICATION_LOCAL_DATABASE.length} protected courses loaded`);
+            console.log('✅ FreshmanHub initialized');
+            console.log(`📚 ${APPLICATION_LOCAL_DATABASE.length} courses loaded`);
             console.log('🔒 All copy/download methods disabled');
         });
     </script>
