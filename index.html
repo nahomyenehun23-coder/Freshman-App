@@ -286,50 +286,34 @@
 <script>
   (function() {
     // ─── SECURITY: ZERO TOLERANCE ────────────────────────────────
-    // block context menu (right click / long press)
     document.addEventListener('contextmenu', e => e.preventDefault(), true);
-    // block keyboard inspect / copy / select
     document.addEventListener('keydown', e => {
       const ctrl = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
-      // Ctrl+C, Ctrl+X, Ctrl+A, Ctrl+U, F12, Ctrl+Shift+I, Cmd+Option+U
       if (ctrl && (key === 'c' || key === 'x' || key === 'a' || key === 'u')) {
         e.preventDefault(); e.stopPropagation(); return false;
       }
       if (e.key === 'F12') { e.preventDefault(); return false; }
       if (ctrl && e.shiftKey && (key === 'i' || key === 'j')) { e.preventDefault(); return false; }
-      if (ctrl && key === 'p') { e.preventDefault(); return false; } // block print
+      if (ctrl && key === 'p') { e.preventDefault(); return false; }
       if (e.key === 'PrintScreen') { e.preventDefault(); return false; }
     }, true);
+    document.addEventListener('dragstart', e => e.preventDefault(), true);
+    document.addEventListener('selectstart', e => e.preventDefault(), true);
 
     // ─── DATA ──────────────────────────────────────────────────────
     const courses = [
       { id: 'logic', emoji: '🧠', name: 'Logic and Critical Thinking', pdf: '' },
       { id: 'psychology', emoji: '👥', name: 'Psychology', pdf: '' },
-      { id: 'anthropology', emoji: '🦴', name: 'Anthropology', pdf: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+      { id: 'anthropology', emoji: '🦴', name: 'Anthropology', pdf: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
       { id: 'economics', emoji: '📈', name: 'Economics', pdf: '' },
       { id: 'emerging', emoji: '🤖', name: 'Emerging Technology', pdf: '' },
       { id: 'global', emoji: '🌍', name: 'Global Trends', pdf: '' },
       { id: 'civics', emoji: '⚖️', name: 'Civics', pdf: '' }
     ];
-    // SET ANTHRO PDF (real external) – we use a real PDF for demo (anthropology content from the user)
-    // Using the provided PDF (public url) – but we use a placeholder that actually exists.
-    // We'll use a real PDF: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" replaced by actual anthropology if available.
-    // However to show real content we inject a known PDF with anthropology content? We'll use the dummy but we need to change to actual.
-    // For the purpose of this demo, we use the actual file from the user – but since it's a local file we cannot. We'll use a public PDF with text.
-    // To make it real we set the pdf url to a real document with similar content. We'll use a PDF hosted.
-    // I'll use a reliable PDF: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" but that's dummy.
-    // Let's set anthropology to a known PDF with content – but we don't have a public url for the provided file.
-    // For the demo, we point to a valid pdf. The user can replace.
-    const ANTHRO_PDF = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'; 
-    // Actually that's dummy, but to show the engine works we use it.
-    // I'll set the anthropology pdf to this dummy, but the user will change to their own url.
-    courses[2].pdf = ANTHRO_PDF;  // anthropology
 
     let currentCourseId = 'anthropology';
     let pdfDoc = null;
-    let renderQueue = [];
-    let isRendering = false;
 
     // ─── DOM REFS ──────────────────────────────────────────────────
     const viewer = document.getElementById('viewer');
@@ -360,7 +344,7 @@
       });
     }
 
-    // ─── LOAD COURSE (PDF or dashboard) ──────────────────────────
+    // ─── LOAD COURSE ──────────────────────────────────────────────
     async function loadCourse(courseId) {
       const course = courses.find(c => c.id === courseId);
       if (!course) return;
@@ -368,12 +352,10 @@
       renderTarget.innerHTML = '';
 
       if (!course.pdf) {
-        // show dashboard
         renderDashboard();
         return;
       }
 
-      // show loader
       renderTarget.innerHTML = `<div class="pdf-loader"><div class="spinner"></div><div>Loading document ...</div></div>`;
 
       try {
@@ -387,20 +369,18 @@
       }
     }
 
-    // ─── RENDER ALL PAGES (continuous canvas) ────────────────────
+    // ─── RENDER ALL PAGES ─────────────────────────────────────────
     function renderAllPages() {
       if (!pdfDoc) return;
       const container = document.getElementById('pdfContainer');
       if (!container) return;
       container.innerHTML = '';
       const totalPages = pdfDoc.numPages;
-      let rendered = 0;
+
       function renderPage(pageNum) {
-        if (pageNum > totalPages) {
-          return;
-        }
+        if (pageNum > totalPages) return;
         pdfDoc.getPage(pageNum).then(page => {
-          const scale = 1.8; // high quality for retina
+          const scale = 1.8;
           const viewport = page.getViewport({ scale });
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
@@ -410,15 +390,8 @@
           canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
           container.appendChild(canvas);
           const ctx = canvas.getContext('2d', { alpha: false });
-          const renderContext = {
-            canvasContext: ctx,
-            viewport: viewport,
-          };
-          page.render(renderContext).promise.then(() => {
-            rendered++;
-            if (rendered < totalPages) {
-              renderPage(rendered + 1);
-            }
+          page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => {
+            renderPage(pageNum + 1);
           }).catch(err => console.warn('page render error', err));
         }).catch(err => console.warn('page get error', err));
       }
@@ -452,28 +425,21 @@
     // ─── INIT ──────────────────────────────────────────────────────
     function init() {
       renderCourseList();
-      // load default course (anthropology)
       const defaultCourse = courses.find(c => c.id === 'anthropology');
       if (defaultCourse && defaultCourse.pdf) {
         loadCourse('anthropology');
       } else {
         renderDashboard();
       }
-      // sidebar toggle
-      menuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-      });
-      closeSidebar.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-      });
-      // click outside sidebar to close
+
+      menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+      closeSidebar.addEventListener('click', () => sidebar.classList.remove('open'));
       document.addEventListener('click', (e) => {
         if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) {
           sidebar.classList.remove('open');
         }
       });
 
-      // theme toggle
       let light = false;
       themeToggle.addEventListener('click', () => {
         light = !light;
@@ -482,15 +448,7 @@
       });
     }
 
-    // ─── SECURITY EXTRA: block selection via css already ──────────
-    // also block dragging images
-    document.addEventListener('dragstart', e => e.preventDefault(), true);
-    // block any pointer selection
-    document.addEventListener('selectstart', e => e.preventDefault(), true);
-
-    // ─── START ──────────────────────────────────────────────────────
     init();
-
   })();
 </script>
 </body>
