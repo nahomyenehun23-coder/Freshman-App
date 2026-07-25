@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
             -webkit-user-select: none !important;
@@ -28,7 +27,6 @@
             background-color: #05070f !important;
             color: #f8fafc !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            touch-action: none !important;
         }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
@@ -73,27 +71,21 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* PDF Canvas Container - Full Touch Support */
-        #pdf-canvas-container {
+        #pdf-viewer-container {
             background: #0a0c1a;
             overflow: hidden;
             height: 100%;
             width: 100%;
             position: relative;
-            touch-action: none !important;
-            -webkit-overflow-scrolling: touch;
         }
         
-        #pdf-canvas-container canvas {
-            display: block;
-            margin: 0 auto;
+        #pdf-viewer-container iframe {
             width: 100%;
-            height: auto;
-            touch-action: none !important;
-            transition: transform 0.05s ease-out;
+            height: 100%;
+            border: none;
+            background: #0a0c1a;
         }
         
-        /* PDF Controls - Minimal */
         .pdf-controls {
             display: flex;
             align-items: center;
@@ -129,15 +121,7 @@
             font-size: 10px;
             padding: 0 4px;
         }
-        .pdf-controls .page-info {
-            color: #94a3b8;
-            font-size: 10px;
-            font-weight: bold;
-            min-width: 60px;
-            text-align: center;
-        }
         
-        /* Fullscreen Mode */
         .fullscreen-mode header,
         .fullscreen-mode footer,
         .fullscreen-mode .pdf-controls,
@@ -161,13 +145,12 @@
             max-height: 100% !important;
             animation: fadeIn 0.3s ease-out;
         }
-        .fullscreen-mode #pdf-canvas-container {
+        .fullscreen-mode #pdf-viewer-container {
             border-radius: 0 !important;
             border: none !important;
             height: 100% !important;
         }
         
-        /* Exit Fullscreen Button */
         .exit-fullscreen-btn {
             position: fixed;
             top: 20px;
@@ -197,7 +180,6 @@
             animation: fadeIn 0.3s ease-out;
         }
         
-        /* Dashboard */
         .dashboard-container {
             height: 100%;
             overflow-y: auto;
@@ -207,7 +189,6 @@
             -webkit-overflow-scrolling: touch;
         }
         
-        /* Gesture Indicator */
         .gesture-indicator {
             position: fixed;
             bottom: 100px;
@@ -232,7 +213,24 @@
             opacity: 1;
         }
         
-        /* Responsive */
+        /* BLOCK GOOGLE DRIVE OVERLAY */
+        #drive-blocker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: auto;
+            background: transparent;
+            display: block;
+        }
+        
+        /* Hide Google Drive toolbar */
+        .hide-drive-ui iframe {
+            filter: brightness(0.98);
+        }
+        
         @media (max-width: 480px) {
             .pdf-controls button {
                 font-size: 10px;
@@ -292,7 +290,7 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-2"></div>
             </div>
 
-            <!-- PDF VIEWER - Canvas with Full Touch Support -->
+            <!-- PDF VIEWER -->
             <div id="screen-pdf-viewer" class="hidden flex flex-col h-full w-full bg-[#0a0c1a]">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2 border-b border-slate-900 flex-shrink-0">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-all touch-manipulation">
@@ -306,13 +304,10 @@
                 
                 <!-- PDF Controls -->
                 <div class="pdf-controls">
-                    <button id="prev-page-btn">◀</button>
-                    <span class="page-info" id="page-info">ገጽ 1 / 1</span>
-                    <button id="next-page-btn">▶</button>
                     <button id="zoom-in-btn">🔍+</button>
                     <button id="zoom-out-btn">🔍−</button>
                     <button id="reset-zoom-btn">⟲</button>
-                    <span id="zoom-level" class="text-[9px] text-slate-500">100%</span>
+                    <span id="zoom-level">100%</span>
                 </div>
 
                 <!-- Loading -->
@@ -324,8 +319,12 @@
                     </div>
                 </div>
 
-                <!-- PDF Canvas Container -->
-                <div id="pdf-canvas-container" class="flex-1 bg-[#0a0c1a] relative overflow-hidden"></div>
+                <!-- PDF Viewer Container -->
+                <div id="pdf-viewer-container" class="flex-1 bg-[#0a0c1a] relative overflow-hidden">
+                    <iframe id="pdf-iframe" src="" class="w-full h-full" allow="autoplay" loading="eager" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+                    <!-- BLOCKER - Prevents clicking on Google Drive elements -->
+                    <div id="drive-blocker"></div>
+                </div>
             </div>
         </main>
 
@@ -344,9 +343,64 @@
 
     <script>
         // ============================================
-        // PDF.js Configuration
+        // BLOCK ALL GOOGLE DRIVE NAVIGATION
         // ============================================
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        function blockGoogleDriveNavigation() {
+            // 1. Block all link clicks to Google Drive
+            document.addEventListener('click', function(e) {
+                let target = e.target;
+                while (target && target !== document) {
+                    if (target.tagName === 'A') {
+                        const href = target.getAttribute('href');
+                        if (href && href.includes('drive.google.com')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🚫 Blocked Google Drive link click');
+                            showGestureIndicator('🚫 ወደ Google Drive መሄድ አይቻልም');
+                            return false;
+                        }
+                    }
+                    target = target.parentElement;
+                }
+            }, true);
+
+            // 2. Block window.open to Google Drive
+            const originalOpen = window.open;
+            window.open = function(url, name, specs) {
+                if (url && url.includes('drive.google.com')) {
+                    console.log('🚫 Blocked window.open to Google Drive');
+                    showGestureIndicator('🚫 ወደ Google Drive መሄድ አይቻልም');
+                    return null;
+                }
+                return originalOpen.call(this, url, name, specs);
+            };
+
+            // 3. Block iframe navigation to Google Drive
+            const originalSetAttribute = HTMLIFrameElement.prototype.setAttribute;
+            HTMLIFrameElement.prototype.setAttribute = function(name, value) {
+                if (name === 'src' && value && value.includes('drive.google.com')) {
+                    // Allow only embed/preview URLs
+                    if (value.includes('/preview') || value.includes('uc?export=download')) {
+                        return originalSetAttribute.call(this, name, value);
+                    }
+                    console.log('🚫 Blocked iframe navigation to:', value);
+                    return null;
+                }
+                return originalSetAttribute.call(this, name, value);
+            };
+
+            // 4. Block navigation to Google Drive
+            window.addEventListener('beforeunload', function(e) {
+                // Block any navigation to Google Drive
+                if (window.location.href.includes('drive.google.com')) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                    window.location.href = window.location.origin;
+                }
+            });
+
+            console.log('✅ Google Drive navigation blocked');
+        }
 
         // ============================================
         // PREVENT SCREEN DIMMING
@@ -365,13 +419,13 @@
         // COURSE DATA
         // ============================================
         const APPLICATION_LOCAL_DATABASE = [
-            { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", fileId: "1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp" },
-            { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ", emoji: "👥", fileId: "1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p" },
-            { id: "anthropology", name: "Anthropology", amharicName: "አንትሮፖሎጂ", emoji: "🦴", fileId: "1h8sNuyWE2ANft8JF7e4LugefEFSeBga8" },
-            { id: "economics", name: "Economics", amharicName: "ኢኮኖሚክስ", emoji: "📈", fileId: "1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL" },
-            { id: "emerging_tech", name: "Emerging Technology", amharicName: "ኤመርጂንግ ቴክኖሎጂ", emoji: "🤖", fileId: "1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w" },
-            { id: "global_trends", name: "Global Trends", amharicName: "ግሎባል ትሬንድስ", emoji: "🌍", fileId: "15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-" },
-            { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", fileId: "1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx" }
+            { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", url: "https://drive.google.com/file/d/1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp/preview" },
+            { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ", emoji: "👥", url: "https://drive.google.com/file/d/1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p/preview" },
+            { id: "anthropology", name: "Anthropology", amharicName: "አንትሮፖሎጂ", emoji: "🦴", url: "https://drive.google.com/file/d/1h8sNuyWE2ANft8JF7e4LugefEFSeBga8/preview" },
+            { id: "economics", name: "Economics", amharicName: "ኢኮኖሚክስ", emoji: "📈", url: "https://drive.google.com/file/d/1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL/preview" },
+            { id: "emerging_tech", name: "Emerging Technology", amharicName: "ኤመርጂንግ ቴክኖሎጂ", emoji: "🤖", url: "https://drive.google.com/file/d/1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w/preview" },
+            { id: "global_trends", name: "Global Trends", amharicName: "ግሎባል ትሬንድስ", emoji: "🌍", url: "https://drive.google.com/file/d/15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-/preview" },
+            { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", url: "https://drive.google.com/file/d/1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx/preview" }
         ];
 
         // ============================================
@@ -383,8 +437,9 @@
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
         const activeCourseText = document.getElementById('active-course-banner-text');
         const pdfLoader = document.getElementById('pdf-loader');
-        const canvasContainer = document.getElementById('pdf-canvas-container');
-        const pageInfo = document.getElementById('page-info');
+        const pdfIframe = document.getElementById('pdf-iframe');
+        const viewerContainer = document.getElementById('pdf-viewer-container');
+        const driveBlocker = document.getElementById('drive-blocker');
         const zoomLevel = document.getElementById('zoom-level');
         const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
         const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
@@ -393,303 +448,69 @@
         // ============================================
         // STATE
         // ============================================
-        let pdfDoc = null;
-        let currentPage = 1;
-        let totalPages = 0;
-        let currentScale = 1.2;
         let currentCourse = null;
+        let currentZoom = 1;
         let isFullscreen = false;
         let pdfLoaded = false;
-        
-        // Touch state
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let initialPinchDistance = 0;
-        let initialZoom = 1;
-        let isPinching = false;
-        let isSwiping = false;
-        let lastTouchY = 0;
 
         // ============================================
-        // GET GOOGLE DRIVE PDF URL
+        // OPEN COURSE VIEWER
         // ============================================
-        function getGoogleDrivePdfUrl(fileId) {
-            return `https://drive.google.com/uc?export=download&id=${fileId}`;
-        }
-
-        // ============================================
-        // RENDER PDF PAGE TO CANVAS
-        // ============================================
-        function renderPage(pageNum, scale = currentScale) {
-            if (!pdfDoc) return;
-
-            // Remove existing canvas
-            const existingCanvas = canvasContainer.querySelector('canvas');
-            if (existingCanvas) {
-                existingCanvas.remove();
-            }
-
-            // Create new canvas
-            const canvas = document.createElement('canvas');
-            canvasContainer.appendChild(canvas);
-            canvas.style.touchAction = 'none';
+        function openCourseViewer(course) {
+            currentCourse = course;
+            pdfLoaded = false;
             
-            pdfDoc.getPage(pageNum).then(page => {
-                const viewport = page.getViewport({ scale: scale });
-                const context = canvas.getContext('2d');
-                
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                canvas.style.width = '100%';
-                canvas.style.height = 'auto';
-                canvas.style.transform = 'scale(1)';
-                canvas.style.transformOrigin = 'top left';
-                
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport
-                };
-                
-                return page.render(renderContext).promise;
-            }).then(() => {
-                console.log(`✅ Page ${pageNum} rendered`);
-                pageInfo.textContent = `ገጽ ${pageNum} / ${totalPages}`;
-            }).catch(err => {
-                console.error('❌ Render error:', err);
-            });
-        }
-
-        // ============================================
-        // LOAD PDF
-        // ============================================
-        function loadPdfFromDrive(fileId) {
-            const url = getGoogleDrivePdfUrl(fileId);
+            viewDashboard.classList.add('hidden');
+            viewPdfViewer.classList.remove('hidden');
+            activeCourseText.innerText = `${course.emoji} ${course.name}`;
             
-            pdfjsLib.getDocument(url).promise.then(pdf => {
-                pdfDoc = pdf;
-                totalPages = pdf.numPages;
-                pageInfo.textContent = `ገጽ 1 / ${totalPages}`;
-                
-                pdfLoader.classList.add('hidden');
-                
-                // Render all pages one by one
-                renderPage(1);
-                pdfLoaded = true;
-                
-                console.log(`✅ PDF loaded: ${totalPages} pages`);
-                showGestureIndicator('👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)');
-            }).catch(err => {
-                console.error('❌ Error loading PDF:', err);
-                pdfLoader.classList.remove('hidden');
-                pdfLoader.innerHTML = `
-                    <div class="text-center p-6">
-                        <div class="text-5xl mb-4">⚠️</div>
-                        <p class="text-red-400 text-sm font-bold">ፒዲኤፍ መክፈት አልተቻለም</p>
-                        <p class="text-slate-500 text-xs mt-2">${err.message || 'Failed to load PDF'}</p>
-                        <div class="mt-4">
-                            <button onclick="retryLoadPdf()" class="bg-[#6366f1] text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-all">
-                                🔄 እንደገና ሞክር
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        // ============================================
-        // RETRY LOAD
-        // ============================================
-        function retryLoadPdf() {
-            if (!currentCourse) return;
             pdfLoader.classList.remove('hidden');
-            pdfLoader.innerHTML = `
-                <div class="text-center">
-                    <div class="loader mx-auto mb-3"></div>
-                    <p class="text-slate-400 text-xs">⏳ እንደገና እየሞከረ...</p>
-                </div>
-            `;
-            canvasContainer.innerHTML = '';
-            loadPdfFromDrive(currentCourse.fileId);
+            pdfIframe.style.display = 'none';
+            
+            currentZoom = 1;
+            pdfIframe.style.transform = 'scale(1)';
+            pdfIframe.style.transformOrigin = 'top left';
+            zoomLevel.textContent = '100%';
+            
+            // Load PDF in iframe
+            pdfIframe.src = course.url;
+            
+            pdfIframe.onload = function() {
+                pdfLoaded = true;
+                pdfLoader.classList.add('hidden');
+                pdfIframe.style.display = 'block';
+                showGestureIndicator('👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)');
+            };
+            
+            // Fallback: hide loader after 4 seconds
+            setTimeout(() => {
+                if (!pdfLoaded) {
+                    pdfLoader.classList.add('hidden');
+                    pdfIframe.style.display = 'block';
+                }
+            }, 4000);
         }
-        window.retryLoadPdf = retryLoadPdf;
 
         // ============================================
-        // NAVIGATION FUNCTIONS
+        // ZOOM FUNCTIONS
         // ============================================
-        function prevPage() {
-            if (currentPage <= 1 || !pdfDoc) return;
-            currentPage--;
-            renderPage(currentPage);
-        }
-
-        function nextPage() {
-            if (currentPage >= totalPages || !pdfDoc) return;
-            currentPage++;
-            renderPage(currentPage);
-        }
-
         function updateZoom(scale) {
-            currentScale = Math.min(Math.max(scale, 0.5), 3);
-            const canvas = canvasContainer.querySelector('canvas');
-            if (canvas) {
-                canvas.style.transform = `scale(${currentScale})`;
-                canvas.style.transformOrigin = 'top left';
-            }
-            zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
+            currentZoom = Math.min(Math.max(scale, 0.5), 3);
+            pdfIframe.style.transform = `scale(${currentZoom})`;
+            pdfIframe.style.transformOrigin = 'top left';
+            zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
         }
 
         function zoomIn() {
-            updateZoom(currentScale + 0.1);
+            updateZoom(currentZoom + 0.1);
         }
 
         function zoomOut() {
-            updateZoom(currentScale - 0.1);
+            updateZoom(currentZoom - 0.1);
         }
 
         function resetZoom() {
-            updateZoom(1.2);
-        }
-
-        // ============================================
-        // TOUCH GESTURES - Pinch & Swipe with 2 fingers
-        // ============================================
-        function setupTouchGestures() {
-            let initialPinchDistance = 0;
-            let initialZoom = 1;
-            let isPinching = false;
-            let touchCount = 0;
-
-            canvasContainer.addEventListener('touchstart', function(e) {
-                touchCount = e.touches.length;
-                
-                if (e.touches.length === 2) {
-                    // Two fingers - Pinch or Swipe
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    initialPinchDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    initialZoom = currentScale;
-                    isPinching = true;
-                    isSwiping = false;
-                    lastTouchY = (touch1.clientY + touch2.clientY) / 2;
-                    showGestureIndicator('🤏 ያስፉ / ⬆⬇ ይሸብልሉ');
-                } else if (e.touches.length === 1) {
-                    // One finger - Single tap for page navigation
-                    touchStartX = e.touches[0].clientX;
-                    touchStartY = e.touches[0].clientY;
-                    isSwiping = false;
-                    isPinching = false;
-                }
-            }, { passive: true });
-
-            canvasContainer.addEventListener('touchmove', function(e) {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    
-                    // Check if it's a pinch or swipe
-                    const currentDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    
-                    const currentMidY = (touch1.clientY + touch2.clientY) / 2;
-                    const deltaY = currentMidY - lastTouchY;
-                    
-                    // If distance changed significantly, it's a pinch
-                    const distanceDiff = Math.abs(currentDistance - initialPinchDistance);
-                    
-                    if (distanceDiff > 10) {
-                        // Pinch gesture
-                        const scale = currentDistance / initialPinchDistance;
-                        const newZoom = Math.min(Math.max(initialZoom * scale, 0.5), 3);
-                        currentScale = newZoom;
-                        const canvas = canvasContainer.querySelector('canvas');
-                        if (canvas) {
-                            canvas.style.transform = `scale(${newZoom})`;
-                            canvas.style.transformOrigin = 'top left';
-                        }
-                        zoomLevel.textContent = `${Math.round(newZoom * 100)}%`;
-                        isPinching = true;
-                        isSwiping = false;
-                    } else if (Math.abs(deltaY) > 20) {
-                        // Swipe gesture - Scroll through pages
-                        isSwiping = true;
-                        isPinching = false;
-                        
-                        if (deltaY < -20 && currentPage < totalPages) {
-                            // Swipe up - Next page
-                            nextPage();
-                            showGestureIndicator(`⬆ ገጽ ${currentPage + 1}`);
-                            lastTouchY = currentMidY;
-                            // Reset to prevent multiple triggers
-                            setTimeout(() => {
-                                isSwiping = false;
-                            }, 300);
-                        } else if (deltaY > 20 && currentPage > 1) {
-                            // Swipe down - Previous page
-                            prevPage();
-                            showGestureIndicator(`⬇ ገጽ ${currentPage - 1}`);
-                            lastTouchY = currentMidY;
-                            setTimeout(() => {
-                                isSwiping = false;
-                            }, 300);
-                        }
-                    }
-                } else if (e.touches.length === 1) {
-                    // Single finger tap
-                    const currentX = e.touches[0].clientX;
-                    const currentY = e.touches[0].clientY;
-                    const deltaX = currentX - touchStartX;
-                    const deltaY = currentY - touchStartY;
-                    
-                    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
-                        if (deltaX < -50) {
-                            // Swipe left - Next page
-                            nextPage();
-                            showGestureIndicator(`⬅ ገጽ ${currentPage}`);
-                        } else if (deltaX > 50) {
-                            // Swipe right - Previous page
-                            prevPage();
-                            showGestureIndicator(`➡ ገጽ ${currentPage}`);
-                        }
-                    }
-                }
-            }, { passive: false });
-
-            canvasContainer.addEventListener('touchend', function(e) {
-                if (isPinching) {
-                    isPinching = false;
-                    setTimeout(() => {
-                        gestureIndicator.classList.remove('show');
-                    }, 1000);
-                }
-                if (isSwiping) {
-                    isSwiping = false;
-                }
-            }, { passive: true });
-
-            // Double tap to reset zoom
-            let lastTapTime = 0;
-            canvasContainer.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 1) {
-                    const currentTime = new Date().getTime();
-                    const tapLength = currentTime - lastTapTime;
-                    if (tapLength < 300 && tapLength > 0) {
-                        // Double tap detected
-                        if (currentScale !== 1.2) {
-                            resetZoom();
-                            showGestureIndicator('⟲ ወደ መደበኛ ተመለሰ');
-                        }
-                        e.preventDefault();
-                    }
-                    lastTapTime = currentTime;
-                }
-            }, { passive: false });
+            updateZoom(1);
         }
 
         // ============================================
@@ -720,36 +541,6 @@
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
             }
-        }
-
-        // ============================================
-        // OPEN COURSE VIEWER
-        // ============================================
-        function openCourseViewer(course) {
-            currentCourse = course;
-            pdfLoaded = false;
-            currentPage = 1;
-            
-            viewDashboard.classList.add('hidden');
-            viewPdfViewer.classList.remove('hidden');
-            activeCourseText.innerText = `${course.emoji} ${course.name}`;
-            
-            canvasContainer.innerHTML = '';
-            
-            pdfLoader.classList.remove('hidden');
-            pdfLoader.innerHTML = `
-                <div class="text-center">
-                    <div class="loader mx-auto mb-3"></div>
-                    <p class="text-slate-400 text-xs">⏳ እየተከፈተ ነው...</p>
-                    <p class="text-slate-600 text-[9px] mt-1">👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)</p>
-                </div>
-            `;
-            
-            // Reset zoom
-            currentScale = 1.2;
-            zoomLevel.textContent = '100%';
-            
-            loadPdfFromDrive(course.fileId);
         }
 
         // ============================================
@@ -873,10 +664,9 @@
             document.getElementById('close-viewer-btn').addEventListener('click', () => {
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
-                canvasContainer.innerHTML = '';
-                pdfDoc = null;
-                currentPage = 1;
-                totalPages = 0;
+                pdfIframe.src = '';
+                pdfIframe.style.display = 'none';
+                currentZoom = 1;
                 pdfLoaded = false;
                 document.body.classList.remove('fullscreen-mode');
                 exitFullscreenBtn.classList.remove('show');
@@ -886,9 +676,7 @@
 
             document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
 
-            // PDF Controls
-            document.getElementById('prev-page-btn').addEventListener('click', prevPage);
-            document.getElementById('next-page-btn').addEventListener('click', nextPage);
+            // Zoom controls
             document.getElementById('zoom-in-btn').addEventListener('click', zoomIn);
             document.getElementById('zoom-out-btn').addEventListener('click', zoomOut);
             document.getElementById('reset-zoom-btn').addEventListener('click', resetZoom);
@@ -900,8 +688,6 @@
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (!viewPdfViewer.classList.contains('hidden')) {
-                    if (e.key === 'ArrowRight' || e.key === 'PageDown') nextPage();
-                    if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevPage();
                     if (e.key === '+' || e.key === '=') zoomIn();
                     if (e.key === '-') zoomOut();
                     if (e.key === '0') resetZoom();
@@ -921,14 +707,56 @@
                 }
             });
 
-            // Setup touch gestures
-            setupTouchGestures();
+            // Touch gestures for zoom on iframe
+            let lastTouchDistance = 0;
+            let initialIframeZoom = 1;
+            
+            viewerContainer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    lastTouchDistance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+                    initialIframeZoom = currentZoom;
+                    showGestureIndicator('🤏 ያስፉ (Pinch to zoom)');
+                }
+            }, { passive: true });
+
+            viewerContainer.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const currentDistance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+                    
+                    const scale = currentDistance / lastTouchDistance;
+                    const newZoom = Math.min(Math.max(initialIframeZoom * scale, 0.5), 3);
+                    currentZoom = newZoom;
+                    pdfIframe.style.transform = `scale(${newZoom})`;
+                    pdfIframe.style.transformOrigin = 'top left';
+                    zoomLevel.textContent = `${Math.round(newZoom * 100)}%`;
+                }
+            }, { passive: false });
+
+            viewerContainer.addEventListener('touchend', function(e) {
+                if (e.touches.length < 2) {
+                    lastTouchDistance = 0;
+                }
+            }, { passive: true });
         }
 
         // ============================================
         // INITIALIZE
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
+            // BLOCK GOOGLE DRIVE FIRST
+            blockGoogleDriveNavigation();
+            
             keepScreenAwake();
             initTelegramWebApp();
             mountDashboardInterface();
@@ -936,8 +764,9 @@
             setupEventListeners();
             
             console.log('✅ FreshmanHub initialized');
+            console.log('🚫 Google Drive navigation BLOCKED');
             console.log('📚 7 Courses loaded');
-            console.log('👆 2 fingers: Swipe up/down for pages, Pinch to zoom');
+            console.log('👆 2 fingers: Pinch to zoom');
             console.log('💡 Screen wake lock active');
         });
     </script>
