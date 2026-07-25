@@ -6,10 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- Proper Tailwind CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        /* 🛡️ ULTRA ABSOLUTE HIGH-SECURITY ENCRYPTED LAYER STYLING */
         * {
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
@@ -40,7 +38,6 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
         }
-        /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -51,7 +48,6 @@
             background: #6366f1;
             border-radius: 10px;
         }
-        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -59,7 +55,6 @@
         .course-card {
             animation: fadeIn 0.3s ease-out;
         }
-        /* Safe area for notched phones */
         @supports (padding: max(0px)) {
             .safe-top {
                 padding-top: max(env(safe-area-inset-top), 16px);
@@ -68,7 +63,6 @@
                 padding-bottom: max(env(safe-area-inset-bottom), 16px);
             }
         }
-        /* Loading spinner */
         .loading-spinner {
             border: 3px solid #1e293b;
             border-top: 3px solid #6366f1;
@@ -81,13 +75,20 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* PDF Viewer specific styles */
+        .pdf-viewer-container {
+            background: #f1f5f9;
+        }
+        .dark .pdf-viewer-container {
+            background: #0f1123;
+        }
     </style>
 </head>
 <body class="bg-[#05070f] text-slate-100">
 
     <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 bg-[#05070f]">
         
-        <!-- HEADER DESIGN MODULE -->
+        <!-- HEADER -->
         <header class="sticky top-0 z-40 glass-effect border-b border-slate-900/50 p-4 safe-top">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
@@ -109,7 +110,7 @@
             </div>
         </header>
 
-        <!-- SIDEBAR CONTAINER MODULE -->
+        <!-- SIDEBAR -->
         <div id="sidebar-backdrop" class="fixed inset-0 bg-black/80 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
         <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-[#0f1123] z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 flex flex-col shadow-2xl">
             <div class="p-4 border-b border-slate-900 flex items-center justify-between safe-top">
@@ -119,7 +120,7 @@
             <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5 safe-bottom"></nav>
         </aside>
 
-        <!-- VIEWPORT ENGINE BODY LAYER -->
+        <!-- MAIN -->
         <main class="flex-1 p-4 relative z-10">
             <!-- Dashboard -->
             <div id="screen-dashboard" class="space-y-4">
@@ -130,22 +131,31 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
-            <!-- PDF VIEWER -->
+            <!-- PDF VIEWER with Google Docs Viewer -->
             <div id="screen-pdf-viewer" class="hidden space-y-3 h-[calc(100vh-140px)] flex flex-col">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform hover:text-white">
                         ⬅ ወደ ኋላ መመለሻ
                     </button>
                     <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[160px]">Course</span>
+                    <button id="open-external-btn" class="flex items-center gap-1 text-xs font-bold text-[#ff007f] active:scale-95 transition-transform hover:text-white">
+                        🔗 ክፈት
+                    </button>
                 </div>
                 
-                <!-- Secured Google Document Frame Preview -->
-                <div class="flex-1 w-full bg-black/40 rounded-xl overflow-hidden border border-slate-800 relative">
-                    <!-- Loading spinner -->
-                    <div id="iframe-loader" class="absolute inset-0 flex items-center justify-center bg-[#05070f]">
+                <!-- Google Docs Viewer -->
+                <div class="flex-1 w-full bg-white rounded-xl overflow-hidden border border-slate-800 relative pdf-viewer-container">
+                    <div id="iframe-loader" class="absolute inset-0 flex items-center justify-center bg-[#05070f] z-10">
                         <div class="loading-spinner"></div>
+                        <p class="text-slate-400 text-xs mt-4 absolute bottom-20">Loading course material...</p>
                     </div>
-                    <iframe id="secure-google-preview-frame" src="" class="w-full h-full border-0" allow="autoplay" loading="lazy"></iframe>
+                    <iframe id="secure-google-preview-frame" 
+                            src="" 
+                            class="w-full h-full border-0" 
+                            allow="autoplay; encrypted-media" 
+                            allowfullscreen
+                            loading="lazy">
+                    </iframe>
                 </div>
             </div>
         </main>
@@ -165,55 +175,63 @@
                 name: "Logic and Critical Thinking", 
                 amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", 
                 emoji: "🧠", 
-                url: "https://drive.google.com/file/d/1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp/preview" 
+                fileId: "1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp"
             },
             { 
                 id: "psychology", 
                 name: "Psychology", 
                 amharicName: "ሳይኮሎጂ (የስነ-ልቦና ትምህርት)", 
                 emoji: "👥", 
-                url: "https://drive.google.com/file/d/1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p/preview" 
+                fileId: "1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p"
             },
             { 
                 id: "anthropology", 
                 name: "Anthropology", 
                 amharicName: "አንትሮፖሎጂ (የሰው ልጅ አመጣጥ ስነ-ባህል)", 
                 emoji: "🦴", 
-                url: "https://drive.google.com/file/d/1h8sNuyWE2ANft8JF7e4LugefEFSeBga8/preview" 
+                fileId: "1h8sNuyWE2ANft8JF7e4LugefEFSeBga8"
             },
             { 
                 id: "economics", 
                 name: "Economics", 
                 amharicName: "ኢኮኖሚክስ (የምጣኔ ሀብት ትምህርት)", 
                 emoji: "📈", 
-                url: "https://drive.google.com/file/d/1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL/preview" 
+                fileId: "1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL"
             },
             { 
                 id: "emerging_tech", 
                 name: "Emerging Technology", 
                 amharicName: "ኤመርጂንግ ቴክኖሎጂ (አዳዲስ ቴክኖሎጂዎች)", 
                 emoji: "🤖", 
-                url: "https://drive.google.com/file/d/1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w/preview" 
+                fileId: "1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w"
             },
             { 
                 id: "global_trends", 
                 name: "Global Trends", 
                 amharicName: "ግሎባል ትሬንድስ (አለም አቀፋዊ ሁኔታዎች)", 
                 emoji: "🌍", 
-                url: "https://drive.google.com/file/d/15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-/preview" 
+                fileId: "15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-"
             },
             { 
                 id: "civics", 
                 name: "Civics", 
                 amharicName: "ሲቪክስና ስነ-ዜጋ", 
                 emoji: "⚖️", 
-                url: "https://drive.google.com/file/d/1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx/preview" 
+                fileId: "1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx"
             }
         ];
 
-        // ============================================
+        // Function to get Google Docs viewer URL
+        function getGoogleDocsViewerUrl(fileId) {
+            return `https://docs.google.com/gview?embedded=true&url=https://drive.google.com/uc?id=${fileId}&export=download`;
+        }
+
+        // Function to get direct Google Drive preview URL (fallback)
+        function getDirectPreviewUrl(fileId) {
+            return `https://drive.google.com/file/d/${fileId}/preview`;
+        }
+
         // DOM REFERENCE VARIABLES
-        // ============================================
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const sidebarLinksTarget = document.getElementById('sidebar-links-target');
         const searchInput = document.getElementById('course-filter-input');
@@ -223,6 +241,9 @@
         const secureFrame = document.getElementById('secure-google-preview-frame');
         const activeCourseText = document.getElementById('active-course-banner-text');
         const iframeLoader = document.getElementById('iframe-loader');
+        const openExternalBtn = document.getElementById('open-external-btn');
+
+        let currentCourse = null;
 
         // ============================================
         // DASHBOARD MOUNT FUNCTION
@@ -293,6 +314,8 @@
         // COURSE VIEWER OPEN FUNCTION
         // ============================================
         function openCourseViewer(course) {
+            currentCourse = course;
+            
             viewDashboard.classList.add('hidden');
             wrapperSearchBox.classList.add('hidden');
             viewPdfViewer.classList.remove('hidden');
@@ -302,8 +325,9 @@
             iframeLoader.classList.remove('hidden');
             secureFrame.style.display = 'none';
             
-            // Set iframe src
-            secureFrame.src = course.url;
+            // Try Google Docs Viewer first (works better on mobile)
+            const viewerUrl = getGoogleDocsViewerUrl(course.fileId);
+            secureFrame.src = viewerUrl;
             
             // Hide loader when iframe loads
             secureFrame.onload = function() {
@@ -311,12 +335,37 @@
                 secureFrame.style.display = 'block';
             };
             
+            // If Google Docs Viewer fails, try direct preview after 5 seconds
+            setTimeout(() => {
+                if (iframeLoader.classList.contains('hidden') === false) {
+                    // Try direct preview as fallback
+                    const fallbackUrl = getDirectPreviewUrl(course.fileId);
+                    secureFrame.src = fallbackUrl;
+                    
+                    secureFrame.onload = function() {
+                        iframeLoader.classList.add('hidden');
+                        secureFrame.style.display = 'block';
+                    };
+                }
+            }, 5000);
+            
             // Handle iframe load error
             secureFrame.onerror = function() {
                 iframeLoader.classList.add('hidden');
                 secureFrame.style.display = 'block';
+                // Show error message in iframe
                 secureFrame.src = 'about:blank';
-                alert('⚠️ Failed to load the course material. Please try again.');
+                secureFrame.srcdoc = `
+                    <html>
+                        <body style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1123;color:#94a3b8;font-family:sans-serif;text-align:center;padding:20px;">
+                            <div>
+                                <h2 style="font-size:24px;margin-bottom:10px;">⚠️</h2>
+                                <p style="font-size:14px;">Unable to load the PDF directly in the app.</p>
+                                <p style="font-size:12px;margin-top:10px;color:#64748b;">Tap the "Open" button above to view in external browser.</p>
+                            </div>
+                        </body>
+                    </html>
+                `;
             };
         }
 
@@ -384,6 +433,16 @@
         }
 
         // ============================================
+        // OPEN IN EXTERNAL BROWSER
+        // ============================================
+        function openInExternalBrowser() {
+            if (currentCourse) {
+                const url = `https://drive.google.com/file/d/${currentCourse.fileId}/view`;
+                window.open(url, '_blank');
+            }
+        }
+
+        // ============================================
         // EVENT LISTENERS SETUP
         // ============================================
         function setupEventListeners() {
@@ -412,12 +471,16 @@
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
                 wrapperSearchBox.classList.remove('hidden');
-                secureFrame.src = ''; // Clear for security
+                secureFrame.src = '';
                 secureFrame.onload = null;
+                secureFrame.onerror = null;
                 iframeLoader.classList.remove('hidden');
-                // Re-render dashboard with current search
+                currentCourse = null;
                 mountDashboardInterface(searchInput.value);
             });
+
+            // Open external
+            openExternalBtn.addEventListener('click', openInExternalBrowser);
 
             // Theme toggle
             document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
@@ -446,14 +509,9 @@
         // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Telegram
             initTelegramWebApp();
-            
-            // Mount UI
             mountDashboardInterface('');
             mountSidebarNavigation();
-            
-            // Setup events
             setupEventListeners();
 
             console.log('✅ FreshmanHub initialized successfully');
