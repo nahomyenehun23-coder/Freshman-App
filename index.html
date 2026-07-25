@@ -18,7 +18,7 @@
             -moz-user-select: none !important;
             -ms-user-select: none !important;
             user-select: none !important;
-            -webkit-touch-callout: none !important;
+            -webkit-touch-out: none !important;
             outline: none !important;
             -webkit-tap-highlight-color: transparent;
         }
@@ -35,15 +35,12 @@
         }
         @media print { body, html, #app-root { display: none !important; visibility: hidden !important; } }
         
-        /* Custom Styles for guaranteed colorful look on all devices */
         .custom-bg-dark { background-color: #05070f !important; }
-        .custom-surface-dark { background-color: #0f1123 !important; }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .border-gradient-active { border-color: #00f2fe !important; }
     </style>
 </head>
 <body class="custom-bg-dark text-slate-100 font-sans">
@@ -79,6 +76,7 @@
 
         <!-- VIEWPORT ENGINE BODY LAYER -->
         <main class="flex-1 p-4 relative z-10">
+            <!-- 7ቱ ኮርሶች ማሳያ ዋና ገጽ (Dashboard) -->
             <div id="screen-dashboard" class="space-y-4">
                 <div class="p-4 rounded-2xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5">
                     <h2 class="text-sm font-bold text-white">ሰላም ለእናንተ ይሁን 👋</h2>
@@ -87,6 +85,7 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
+            <!-- ፒዲኤፍ መመልከቻ ገጽ (Viewer) - በቅድሚያ የተሸሸገ (hidden) -->
             <div id="screen-pdf-viewer" class="hidden space-y-3">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform">⬅ ወደ ኋላ መመለሻ</button>
@@ -106,7 +105,6 @@
     </div>
 
     <script>
-        // 7ቱ እውነተኛ የጉግል ድራይቭ ሊንኮች እዚህ ጋር ሙሉ በሙሉ ገብተዋል
         const APPLICATION_LOCAL_DATABASE = [
             { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", url: "https://google.com" },
             { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ (የስነ-ልቦና ትምህርት)", emoji: "👥", url: "https://google.com" },
@@ -145,5 +143,7 @@
         function mountDashboardInterface(query = '') {
             dashboardGrid.innerHTML = '';
             const normalizedQuery = query.toLowerCase();
-            const parsedMatches = APPLICATION_LOCAL_DATABASE.filter(course => course.name.toLowerCase().includes(normalizedQuery) || course.amharicName.includes(query));parsedMatches.forEach(course => {const uiTileNode = document.createElement('div');uiTileNode.className = "p-4 rounded-xl bg-[#0f1123] border border-slate-900 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 shadow-md group hover:border-[#00f2fe]/60";uiTileNode.innerHTML = <div class="flex items-center gap-3.5"> <div class="text-2xl p-2 rounded-lg bg-slate-900 border border-slate-800/40">${course.emoji}</div> <div> <h4 class="text-sm font-bold text-slate-100 group-hover:text-[#00f2fe] transition-colors">${course.name}</h4> <p class="text-[10px] text-slate-400 mt-0.5">${course.amharicName}</p> </div> </div> <span class="text-[#00f2fe] font-bold text-xs opacity-70 group-hover:opacity-100">📖 አንብብ</span>;uiTileNode.addEventListener('click', () => dispatchContinuousPdfPipeline(course));dashboardGrid.appendChild(uiTileNode);});}function mountSidebarNavigation() {sidebarLinksTarget.innerHTML = '';APPLICATION_LOCAL_DATABASE.forEach(course => {const navRowElement = document.createElement('button');navRowElement.className = "w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-900 text-slate-300 hover:text-white transition-all text-xs font-semibold";navRowElement.innerHTML = <span>${course.emoji}</span> <span class="truncate">${course.name}</span>;navRowElement.addEventListener('click', () => {closeSidebarComponent();dispatchContinuousPdfPipeline(course);});sidebarLinksTarget.appendChild(navRowElement);});}
-searchInput.addEventListener('input', e => mountDashboardInterface(e.target.value));const btnSidebarOpen = document.getElementById('sidebar-toggle-btn');const btnSidebarClose = document.getElementById('sidebar-close-btn');const panelSidebar = document.getElementById('sidebar-panel');const backdropSidebar = document.getElementById('sidebar-backdrop');function openSidebarComponent() { panelSidebar.style.transform = 'translateX(0)'; backdropSidebar.classList.remove('opacity-0', 'pointer-events-none'); }function closeSidebarComponent() { panelSidebar.style.transform = 'translateX(-100%)'; backdropSidebar.classList.add('opacity-0', 'pointer-events-none'); }btnSidebarOpen.addEventListener('click', openSidebarComponent);btnSidebarClose.addEventListener('click', closeSidebarComponent);backdropSidebar.addEventListener('click', closeSidebarComponent);document.getElementById('close-viewer-btn').addEventListener('click', () => {internalEnginePipelineLock = null;viewPdfViewer.classList.add('hidden'); viewDashboard.classList.remove('hidden');wrapperSearchBox.classList.remove('hidden'); canvasInfiniteBox.innerHTML = '';});function dispatchContinuousPdfPipeline(course) {viewDashboard.classList.add('hidden'); wrapperSearchBox.classList.add('hidden'); viewPdfViewer.classList.remove('hidden');activeCourseText.innerText = ${course.emoji} ${course.name};canvasInfiniteBox.innerHTML = ''; renderSpinner.classList.remove('hidden');const secureTokenPointer = Math.random(); internalEnginePipelineLock = secureTokenPointer;pdfjsLib.getDocument({ url: course.url, disableOpenFile: true, disableRange: false, disableStream: false }).promise.then(async function(pdfProxy) {if (internalEnginePipelineLock !== secureTokenPointer) return;const sheetsCount = pdfProxy.numPages;for (let i = 1; i <= sheetsCount; i++) {if (internalEnginePipelineLock !== secureTokenPointer) break;await drawRawGraphicCanvasLayer(pdfProxy, i);}renderSpinner.classList.add('hidden');}).catch(err => {console.error(err); renderSpinner.classList.add('hidden');canvasInfiniteBox.innerHTML = <div class="text-center p-6 text-xs text-[#ff007f] font-bold">❌ ፒዲኤፉን መጫን አልተቻለም። እባክዎ የፋይል ፍቃዱን Google Drive ላይ 'Anyone with the link' ማድረጉን ያረጋግጡ።</div>;});}function drawRawGraphicCanvasLayer(pdfProxy, index) {return pdfProxy.getPage(index).then(function(pdfPage) {const layoutBoxWidth = canvasInfiniteBox.clientWidth || 350;const coreViewport = pdfPage.getViewport({ scale: 1.0 });const fitScaleFactor = (layoutBoxWidth - 8) / coreViewport.width;const dynamicCalibratedViewport = pdfPage.getViewport({ scale: fitScaleFactor * 1.5 });const canvasElement = document.createElement('canvas');canvasElement.className = "w-full rounded-lg shadow-xl border border-slate-950 my-1 block max-w-full";const renderingContext2D = canvasElement.getContext('2d', { alpha: false });canvasElement.height = dynamicCalibratedViewport.height; canvasElement.width = dynamicCalibratedViewport.width;return pdfPage.render({ canvasContext: renderingContext2D, viewport: dynamicCalibratedViewport, intent: 'display' }).promise.then(() => {canvasInfiniteBox.appendChild(canvasElement);});});}mountDashboardInterface(); mountSidebarNavigation();
+            const parsedMatches = APPLICATION_LOCAL_DATABASE.filter(course => 
+                course.name.toLowerCase().includes(normalizedQuery) || course.amharicName.includes(query)
+            );
+            parsedMatches.forEach(course => {
