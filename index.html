@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Freshman Read-Only Course Viewer</title>
+    <!-- Tailwind CSS for Premium Premium Gen-Z UI -->
+    <script src="https://tailwindcss.com"></script>
+    <!-- Mozilla PDF.js Core Library -->
+    <script src="https://cloudflare.com"></script>
+    <script>
+        // Initialize PDF.js Core Worker for background rendering pipeline
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
+        
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            darkBg: '#05070f',
+                            darkSurface: '#0f1123',
+                            lightBg: '#f1f5f9',
+                            lightSurface: '#ffffff',
+                            neonCyan: '#00f2fe',
+                            neonPink: '#ff007f',
+                            royalPurple: '#6366f1'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* =========================================================================
+           1. ZERO-TOLERANCE ANTI-COPY SECURITY SYSTEM (CSS PROTECTION LAYER)
+           ========================================================================= */
+        * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
+            outline: none !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            overflow-x: hidden;
+            touch-action: pan-y;
+        }
+
+        /* Prevent image/canvas dragging and extraction */
+        img, canvas {
+            pointer-events: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+        }
+
+        /* Absolute print prevention layout kill switch */
+        @media print {
+            body, html, #app-root {
+                display: none !important;
+                visibility: hidden !important;
+            }
+        }
+
+        /* Premium Interface Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(0, 242, 254, 0.3);
+            border-radius: 10px;
+        }
+        .light ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-brand-darkBg text-slate-100 font-sans transition-colors duration-300">
+
+    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 dark:bg-brand-darkBg light:bg-brand-lightBg transition-colors">
+        
+        <!-- HEADER COMPONENT -->
+        <header class="sticky top-0 z-40 backdrop-blur-xl bg-brand-darkSurface/90 dark:bg-brand-darkSurface/90 light:bg-white/90 border-b border-slate-900/50 dark:border-slate-900/50 light:border-slate-200/80 p-4 transition-colors">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3">
+                    <button id="sidebar-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 dark:bg-slate-900/50 light:bg-slate-100 border border-slate-800/40 dark:border-slate-800/40 light:border-slate-200 active:scale-95 transition-all">
+                        <svg class="w-5 h-5 text-brand-neonCyan dark:text-brand-neonCyan light:text-brand-royalPurple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h1 class="text-lg font-black bg-gradient-to-r from-brand-neonCyan via-brand-neonPink to-brand-royalPurple bg-clip-text text-transparent tracking-tight">FreshmanHub</h1>
+                </div>
+                
+                <!-- LIGHT / DARK MODE TOGGLE KEY -->
+                <button id="theme-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 dark:bg-slate-900/50 light:bg-slate-100 border border-slate-800/40 dark:border-slate-800/40 light:border-slate-200 transition-all text-base active:scale-95">
+                    🌙
+                </button>
+            </div>
+            
+            <!-- DASHBOARD COURSE HEADERS FILTER INPUT -->
+            <div id="search-box-container" class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">🔍</span>
+                <input type="text" id="course-filter-input" placeholder="ኮርሶችን ይፈልጉ (Search courses...)" class="w-full pl-9 pr-4 py-2 bg-brand-darkBg dark:bg-brand-darkBg light:bg-slate-50 border border-slate-800 dark:border-slate-800 light:border-slate-300 rounded-xl focus:border-brand-neonCyan dark:focus:border-brand-neonCyan light:focus:border-brand-royalPurple text-xs font-medium transition-all text-slate-200 dark:text-slate-200 light:text-slate-800">
+            </div>
+        </header>
+
+        <!-- DYNAMIC SIDEBAR SLIDE COMPONENT -->
+        <div id="sidebar-backdrop" class="fixed inset-0 bg-black/80 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+        <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-brand-darkSurface dark:bg-brand-darkSurface light:bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 dark:border-slate-900 light:border-slate-200 flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-900 dark:border-slate-900 light:border-slate-200 flex items-center justify-between">
+                <span class="font-black text-sm text-transparent bg-gradient-to-r from-brand-neonCyan to-brand-royalPurple bg-clip-text">የኮርሶች ዝርዝር</span>
+                <button id="sidebar-close-btn" class="text-slate-400 dark:text-slate-400 light:text-slate-500 text-sm p-1.5">✕</button>
+            </div>
+            <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5"></nav>
+        </aside>
+
+        <!-- MAIN ROUTER BODY VIEWPORT -->
+        <main class="flex-1 p-4 relative z-10">
+            
+            <!-- VIEW 1: MAIN HOMEPAGE DASHBOARD -->
+            <div id="screen-dashboard" class="space-y-4">
+                <div class="p-4 rounded-2xl bg-gradient-to-br from-brand-royalPurple/20 to-brand-neonPink/5 border border-brand-royalPurple/30">
+                    <h2 class="text-sm font-bold text-white dark:text-white light:text-slate-900">ሰላም ለእናንተ ይሁን 👋</h2>
+                    <p class="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-600 mt-1 leading-relaxed">ለዩኒቨርሲቲ አንደኛ አመት ተማሪዎች የተዘጋጁ የትምህርት ማጠቃለያዎች። ፋይሎችን ኮፒ ማድረግ ወይም ማውረድ በጥብቅ የተከለከለ ነው።</p>
+                </div>
+                
+                <!-- Grid Target Architecture for 7 Core Tonal Cards -->
+                <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
+            </div>
+
+            <!-- VIEW 2: BULLETPROOF GRAPHIC PDF RENDERING ENGINE LAYER -->
+            <div id="screen-pdf-viewer" class="hidden space-y-3">
+                <div class="flex items-center justify-between bg-brand-darkSurface dark:bg-brand-darkSurface light:bg-white p-2.5 rounded-xl border border-slate-900 dark:border-slate-900 light:border-slate-200/80">
+                    <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-brand-neonCyan dark:text-brand-neonCyan light:text-brand-royalPurple active:scale-95 transition-transform">
+                        ⬅ ወደ ኋላ መመለሻ
+                    </button>
+                    <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 dark:text-slate-400 light:text-slate-600 truncate max-w-[160px]">Course</span>
+                </div>
+
+                <!-- Pure Continuous Render Container Engine -->
+                <div id="rendering-canvas-infinite-viewport" class="space-y-2 bg-black/20 rounded-xl p-0.5 flex flex-col items-center overflow-x-hidden min-h-[300px]"></div>
+                
+                <!-- Engine Processing Banner Status -->
+                <div id="engine-render-spinner" class="hidden flex flex-col items-center justify-center p-12 space-y-2">
+                    <div class="w-8 h-8 border-3 border-brand-neonCyan border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-[10px] font-mono tracking-widest text-brand-neonCyan animate-pulse">SECURING GRAPHIC PIXELS...</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- SECURITY LOGO BOTTOM BANNER -->
+        <footer class="p-3 text-center border-t border-slate-900 dark:border-slate-900 light:border-slate-200/60 bg-slate-950/20 dark:bg-slate-950/20 light:bg-slate-50 transition-colors">
+            <p class="text-[9px] font-mono tracking-wider text-slate-600 dark:text-slate-600 light:text-slate-400">🔒 PROTECTED BY ENCRYPTED READ-ONLY ENGINE</p>
+        </footer>
+    </div>
+
+    <!-- =========================================================================
+       2. CLIENT PIPELINE EXECUTABLE LOGIC & Patrolling JAVASCRIPT CODES
+       ========================================================================= -->
+    <script>
+        // --- 📥 ፒዲኤፍ ሊንኮችን እዚህ ይተኩ (DATABASE REPLACEMENT MATRIX) ---
+        // የራስዎን የ PDF ሊንኮች ባገኙ ጊዜ ከታች ያሉትን የ 'url' እሴቶች ይቀይሩ።
