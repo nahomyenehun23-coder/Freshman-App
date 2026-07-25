@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
@@ -27,13 +27,7 @@
             background-color: #05070f !important;
             color: #f8fafc !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
-        /* Prevent screen dimming - keep screen awake */
-        .keep-awake {
-            animation: keepAwake 1s infinite;
-        }
-        @keyframes keepAwake {
-            0%, 100% { opacity: 1; }
+            touch-action: pan-x pan-y !important;
         }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
@@ -47,7 +41,7 @@
             -webkit-backdrop-filter: blur(20px);
         }
         ::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
         ::-webkit-scrollbar-track {
             background: #0f1123;
@@ -57,19 +51,23 @@
             border-radius: 10px;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(-30px); }
         }
         .course-card {
-            animation: fadeIn 0.3s ease-out;
+            animation: slideIn 0.3s ease-out;
         }
         @supports (padding: max(0px)) {
-            .safe-top {
-                padding-top: max(env(safe-area-inset-top), 16px);
-            }
-            .safe-bottom {
-                padding-bottom: max(env(safe-area-inset-bottom), 16px);
-            }
+            .safe-top { padding-top: max(env(safe-area-inset-top), 16px); }
+            .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
         }
         .loader {
             border: 3px solid #1e293b;
@@ -83,20 +81,29 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Full Screen PDF Viewer */
+        
+        /* PDF Viewer Container - Full Touch Support */
         #pdf-viewer-container {
             background: #0a0c1a;
             overflow: hidden;
             height: 100%;
             width: 100%;
             position: relative;
+            touch-action: pan-x pan-y pinch-zoom !important;
+            -webkit-overflow-scrolling: touch;
         }
-        #pdf-viewer-container iframe {
+        
+        /* PDF Iframe - Touch Enabled */
+        #pdf-iframe {
             width: 100%;
             height: 100%;
             border: none;
             background: #0a0c1a;
+            touch-action: pan-x pan-y pinch-zoom !important;
+            -webkit-overflow-scrolling: touch;
+            transition: transform 0.1s ease-out;
         }
+        
         /* Scroll Button */
         .scroll-btn {
             position: fixed;
@@ -107,25 +114,28 @@
             color: white;
             border: none;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
             cursor: pointer;
             box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: none;
             align-items: center;
             justify-content: center;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            touch-action: manipulation;
         }
         .scroll-btn:active {
-            transform: scale(0.9);
+            transform: scale(0.85);
         }
         .scroll-btn.show {
             display: flex;
+            animation: fadeIn 0.3s ease-out;
         }
-        /* Full screen mode - hide everything except PDF */
+        
+        /* Fullscreen Mode */
         .fullscreen-mode header,
         .fullscreen-mode footer,
         .fullscreen-mode .pdf-controls,
@@ -135,6 +145,7 @@
         .fullscreen-mode #screen-pdf-viewer {
             padding: 0 !important;
             height: 100vh !important;
+            width: 100vw !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
@@ -145,6 +156,8 @@
             border-radius: 0 !important;
             margin: 0 !important;
             max-width: 100% !important;
+            max-height: 100% !important;
+            animation: fadeIn 0.3s ease-out;
         }
         .fullscreen-mode #screen-pdf-viewer > div:first-child {
             display: none !important;
@@ -152,23 +165,26 @@
         .fullscreen-mode #pdf-viewer-container {
             border-radius: 0 !important;
             border: none !important;
+            height: 100% !important;
         }
         .fullscreen-mode .scroll-btn {
             bottom: 30px;
             right: 30px;
         }
-        /* Exit fullscreen button */
+        
+        /* Exit Fullscreen Button */
         .exit-fullscreen-btn {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1001;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.15);
             border-radius: 12px;
-            padding: 10px 15px;
+            padding: 10px 16px;
             font-size: 12px;
+            font-weight: bold;
             cursor: pointer;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -176,27 +192,106 @@
             align-items: center;
             gap: 8px;
             transition: all 0.3s;
+            touch-action: manipulation;
         }
         .exit-fullscreen-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.9);
         }
         .exit-fullscreen-btn.show {
             display: flex;
+            animation: fadeIn 0.3s ease-out;
         }
+        
         /* Dashboard */
         .dashboard-container {
-            height: 100vh;
+            height: 100%;
             overflow-y: auto;
-            padding: 16px;
+            overflow-x: hidden;
+            padding: 12px;
             padding-bottom: 80px;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
         }
-        /* Quick load - preload iframe */
-        .preload-iframe {
-            position: absolute;
-            width: 1px;
-            height: 1px;
+        
+        /* Zoom Controls - Touch Friendly */
+        .pdf-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: rgba(15, 17, 35, 0.95);
+            border-bottom: 1px solid #1e293b;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .pdf-controls button {
+            padding: 6px 12px;
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.8);
+            color: #f8fafc;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s;
+            min-height: 32px;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+        .pdf-controls button:active {
+            transform: scale(0.9);
+            background: rgba(99, 102, 241, 0.3);
+        }
+        .pdf-controls span {
+            color: #94a3b8;
+            font-size: 10px;
+            padding: 0 4px;
+        }
+        
+        /* Gesture Indicator */
+        .gesture-indicator {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 10px;
             opacity: 0;
+            transition: opacity 0.5s;
             pointer-events: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .gesture-indicator.show {
+            opacity: 1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .pdf-controls button {
+                font-size: 10px;
+                padding: 4px 10px;
+                min-height: 28px;
+            }
+            .scroll-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 16px;
+                bottom: 15px;
+                right: 15px;
+            }
+            .exit-fullscreen-btn {
+                padding: 8px 12px;
+                font-size: 10px;
+                top: 15px;
+                right: 15px;
+            }
         }
     </style>
 </head>
@@ -208,14 +303,14 @@
         <header class="sticky top-0 z-40 glass-effect border-b border-slate-900/50 p-3 safe-top flex-shrink-0">
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
-                    <button id="sidebar-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 active:scale-95 transition-all">
+                    <button id="sidebar-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 active:scale-95 transition-all touch-manipulation">
                         <svg class="w-5 h-5 text-[#00f2fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
                     <h1 class="text-base font-black text-gradient tracking-tight">FreshmanHub</h1>
                 </div>
-                <button id="theme-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-sm active:scale-95">
+                <button id="theme-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-sm active:scale-95 touch-manipulation">
                     🌙
                 </button>
             </div>
@@ -231,7 +326,7 @@
         <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-[#0f1123] z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 flex flex-col shadow-2xl">
             <div class="p-4 border-b border-slate-900 flex items-center justify-between safe-top">
                 <span class="font-black text-sm text-gradient">የኮርሶች ዝርዝር</span>
-                <button id="sidebar-close-btn" class="text-slate-400 text-sm p-1.5 hover:text-white transition-colors">✕</button>
+                <button id="sidebar-close-btn" class="text-slate-400 text-sm p-1.5 hover:text-white transition-colors touch-manipulation">✕</button>
             </div>
             <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5 safe-bottom"></nav>
         </aside>
@@ -240,31 +335,32 @@
         <main class="flex-1 relative overflow-hidden">
             <!-- Dashboard -->
             <div id="screen-dashboard" class="dashboard-container">
-                <div class="p-3 rounded-xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5 mb-3">
+                <div class="p-3 rounded-xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5 mb-3 animate-fadeIn">
                     <h2 class="text-xs font-bold text-white">ሰላም ለእናንተ ይሁን 👋</h2>
                     <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">ለዩኒቨርሲቲ አንደኛ አመት ተማሪዎች የተዘጋጁ የትምህርት ማጠቃለያዎች።</p>
                 </div>
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-2"></div>
             </div>
 
-            <!-- PDF VIEWER - Full Screen -->
+            <!-- PDF VIEWER - Full Touch Support -->
             <div id="screen-pdf-viewer" class="hidden flex flex-col h-full w-full bg-[#0a0c1a]">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2 border-b border-slate-900 flex-shrink-0">
-                    <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-all">
+                    <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-all touch-manipulation">
                         ⬅ ወደ ኋላ
                     </button>
                     <span id="active-course-banner-text" class="text-[10px] font-bold text-slate-400 truncate max-w-[120px]">Course</span>
-                    <button id="fullscreen-toggle-btn" class="text-xs text-slate-400 hover:text-white active:scale-95 transition-all">
+                    <button id="fullscreen-toggle-btn" class="text-xs text-slate-400 hover:text-white active:scale-95 transition-all touch-manipulation">
                         ⛶ ሙሉ ማያ
                     </button>
                 </div>
                 
-                <!-- Simple Controls -->
-                <div class="pdf-controls flex items-center justify-center gap-2 p-1.5 bg-[#0f1123] border-b border-slate-900 flex-shrink-0">
-                    <button id="zoom-in-btn" class="px-2 py-1 rounded-lg bg-slate-800/50 text-xs active:scale-95">🔍+</button>
-                    <button id="zoom-out-btn" class="px-2 py-1 rounded-lg bg-slate-800/50 text-xs active:scale-95">🔍−</button>
-                    <button id="reset-zoom-btn" class="px-2 py-1 rounded-lg bg-slate-800/50 text-xs active:scale-95">⟲</button>
-                    <span id="view-status" class="text-slate-500 text-[9px]">🔒 ተጠብቋል</span>
+                <!-- Touch Controls -->
+                <div class="pdf-controls">
+                    <button id="zoom-in-btn">🔍+</button>
+                    <button id="zoom-out-btn">🔍−</button>
+                    <button id="reset-zoom-btn">⟲</button>
+                    <span id="view-status">🔒 ተጠብቋል</span>
+                    <span id="zoom-level" class="text-[9px] text-slate-500">100%</span>
                 </div>
 
                 <!-- Loading -->
@@ -272,24 +368,26 @@
                     <div class="text-center">
                         <div class="loader mx-auto mb-3"></div>
                         <p class="text-slate-400 text-xs">⏳ እየተከፈተ ነው...</p>
+                        <p class="text-slate-600 text-[9px] mt-1">👆 ወደ ላይ/ታች ይሸብልሉ</p>
                     </div>
                 </div>
 
-                <!-- PDF Viewer Container -->
-                <div id="pdf-viewer-container" class="flex-1 bg-[#0a0c1a] relative">
-                    <iframe id="pdf-iframe" src="" class="w-full h-full" allow="autoplay" loading="eager"></iframe>
+                <!-- PDF Viewer Container - Touch Enabled -->
+                <div id="pdf-viewer-container" class="flex-1 bg-[#0a0c1a] relative overflow-hidden">
+                    <iframe id="pdf-iframe" src="" class="w-full h-full" allow="autoplay" loading="eager" 
+                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups">
+                    </iframe>
                     <div id="drive-blocker" class="absolute inset-0 z-10 pointer-events-none"></div>
                 </div>
             </div>
         </main>
 
-        <!-- SCROLL BUTTON -->
-        <button id="scroll-top-btn" class="scroll-btn" aria-label="Scroll to top">
-            ↑
-        </button>
-        <button id="scroll-bottom-btn" class="scroll-btn" style="bottom: 80px;" aria-label="Scroll to bottom">
-            ↓
-        </button>
+        <!-- SCROLL BUTTONS -->
+        <button id="scroll-top-btn" class="scroll-btn" aria-label="Scroll to top">↑</button>
+        <button id="scroll-bottom-btn" class="scroll-btn" style="bottom: 80px;" aria-label="Scroll to bottom">↓</button>
+
+        <!-- GESTURE INDICATOR -->
+        <div id="gesture-indicator" class="gesture-indicator">👆 ይሸብልሉ / ያስፉ</div>
 
         <!-- EXIT FULLSCREEN BUTTON -->
         <button id="exit-fullscreen-btn" class="exit-fullscreen-btn">
@@ -303,61 +401,15 @@
 
     <script>
         // ============================================
-        // PREVENT SCREEN DIMMING - Keep screen awake
+        // PREVENT SCREEN DIMMING
         // ============================================
         function keepScreenAwake() {
-            // Method 1: Request wake lock (if supported)
             if ('wakeLock' in navigator) {
                 try {
                     navigator.wakeLock.request('screen').then(lock => {
-                        console.log('✅ Screen wake lock acquired');
-                        // Release after 30 seconds and re-request to keep active
-                        setTimeout(() => {
-                            lock.release();
-                            keepScreenAwake();
-                        }, 30000);
-                    }).catch(err => {
-                        console.log('⚠️ Wake lock not available:', err);
-                    });
-                } catch (e) {
-                    console.log('⚠️ Wake lock error:', e);
-                }
-            }
-            
-            // Method 2: Keep screen from dimming with video element
-            const video = document.createElement('video');
-            video.style.position = 'fixed';
-            video.style.top = '-9999px';
-            video.style.left = '-9999px';
-            video.style.width = '1px';
-            video.style.height = '1px';
-            video.muted = true;
-            video.loop = true;
-            video.setAttribute('playsinline', '');
-            document.body.appendChild(video);
-            
-            // Create a small black screen to keep device awake
-            const canvas = document.createElement('canvas');
-            canvas.width = 1;
-            canvas.height = 1;
-            canvas.style.position = 'fixed';
-            canvas.style.top = '-9999px';
-            canvas.style.left = '-9999px';
-            document.body.appendChild(canvas);
-            
-            // Try to keep screen on by playing video
-            const mediaStream = canvas.captureStream(1);
-            if (mediaStream) {
-                try {
-                    video.srcObject = mediaStream;
-                    video.play().catch(() => {});
+                        setTimeout(() => { lock.release(); keepScreenAwake(); }, 30000);
+                    }).catch(() => {});
                 } catch (e) {}
-            }
-            
-            // Also use the NoSleep.js approach with a dummy audio
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext) {
-                audioContext.resume().catch(() => {});
             }
         }
 
@@ -382,17 +434,18 @@
         const searchInput = document.getElementById('course-filter-input');
         const viewDashboard = document.getElementById('screen-dashboard');
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
-        const wrapperSearchBox = document.getElementById('search-box-container');
         const activeCourseText = document.getElementById('active-course-banner-text');
         const pdfLoader = document.getElementById('pdf-loader');
         const pdfIframe = document.getElementById('pdf-iframe');
         const viewerContainer = document.getElementById('pdf-viewer-container');
         const driveBlocker = document.getElementById('drive-blocker');
         const viewStatus = document.getElementById('view-status');
+        const zoomLevel = document.getElementById('zoom-level');
         const scrollTopBtn = document.getElementById('scroll-top-btn');
         const scrollBottomBtn = document.getElementById('scroll-bottom-btn');
         const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
         const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
+        const gestureIndicator = document.getElementById('gesture-indicator');
 
         // ============================================
         // STATE
@@ -401,9 +454,13 @@
         let currentZoom = 1;
         let isFullscreen = false;
         let pdfLoaded = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartZoom = 1;
+        let lastTouchDistance = 0;
 
         // ============================================
-        // PRELOAD PDF - Faster Loading
+        // PRELOAD PDF
         // ============================================
         function preloadPdf(url) {
             const link = document.createElement('link');
@@ -412,20 +469,15 @@
             link.href = url;
             document.head.appendChild(link);
             
-            // Also preconnect to Google Drive
             const preconnect = document.createElement('link');
             preconnect.rel = 'preconnect';
             preconnect.href = 'https://drive.google.com';
             document.head.appendChild(preconnect);
         }
-
-        // Preload all course PDFs
-        APPLICATION_LOCAL_DATABASE.forEach(course => {
-            preloadPdf(course.url);
-        });
+        APPLICATION_LOCAL_DATABASE.forEach(course => preloadPdf(course.url));
 
         // ============================================
-        // OPEN COURSE VIEWER - Fast Loading
+        // OPEN COURSE VIEWER
         // ============================================
         function openCourseViewer(course) {
             currentCourse = course;
@@ -435,37 +487,34 @@
             viewPdfViewer.classList.remove('hidden');
             activeCourseText.innerText = `${course.emoji} ${course.name}`;
             
-            // Show loader
             pdfLoader.classList.remove('hidden');
             pdfIframe.style.display = 'none';
             
-            // Reset zoom
             currentZoom = 1;
             pdfIframe.style.transform = 'scale(1)';
             pdfIframe.style.transformOrigin = 'top left';
+            zoomLevel.textContent = '100%';
             
-            // Load PDF immediately
+            // Load PDF
             pdfIframe.src = course.url;
             
-            // Hide loader when iframe loads (fast)
             pdfIframe.onload = function() {
                 pdfLoaded = true;
                 pdfLoader.classList.add('hidden');
                 pdfIframe.style.display = 'block';
                 
-                // Enable blocker after load
                 setTimeout(() => {
                     driveBlocker.classList.add('pointer-events-auto');
                 }, 500);
                 
                 viewStatus.textContent = '🔒 ተጠብቋል';
-                
-                // Show scroll buttons
                 scrollTopBtn.classList.add('show');
                 scrollBottomBtn.classList.add('show');
+                
+                // Show gesture indicator
+                showGestureIndicator('👆 ይሸብልሉ / ያስፉ');
             };
             
-            // Fallback: hide loader after 3 seconds (fast)
             setTimeout(() => {
                 if (!pdfLoaded) {
                     pdfLoader.classList.add('hidden');
@@ -476,27 +525,119 @@
         }
 
         // ============================================
+        // GESTURE INDICATOR
+        // ============================================
+        function showGestureIndicator(text) {
+            gestureIndicator.textContent = text;
+            gestureIndicator.classList.add('show');
+            setTimeout(() => {
+                gestureIndicator.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============================================
         // ZOOM FUNCTIONS
         // ============================================
-        function zoomIn() {
-            currentZoom = Math.min(currentZoom + 0.1, 2);
+        function updateZoom(scale) {
+            currentZoom = Math.min(Math.max(scale, 0.5), 3);
             pdfIframe.style.transform = `scale(${currentZoom})`;
             pdfIframe.style.transformOrigin = 'top left';
+            zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
             viewStatus.textContent = `🔍 ${Math.round(currentZoom * 100)}%`;
+        }
+
+        function zoomIn() {
+            updateZoom(currentZoom + 0.1);
         }
 
         function zoomOut() {
-            currentZoom = Math.max(currentZoom - 0.1, 0.5);
-            pdfIframe.style.transform = `scale(${currentZoom})`;
-            pdfIframe.style.transformOrigin = 'top left';
-            viewStatus.textContent = `🔍 ${Math.round(currentZoom * 100)}%`;
+            updateZoom(currentZoom - 0.1);
         }
 
         function resetZoom() {
-            currentZoom = 1;
-            pdfIframe.style.transform = 'scale(1)';
-            pdfIframe.style.transformOrigin = 'top left';
+            updateZoom(1);
             viewStatus.textContent = '🔒 ተጠብቋል';
+        }
+
+        // ============================================
+        // TOUCH GESTURES - Pinch to Zoom & Swipe
+        // ============================================
+        function setupTouchGestures() {
+            let initialPinchDistance = 0;
+            let initialZoom = 1;
+            let isPinching = false;
+            
+            viewerContainer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    // Pinch start
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    initialPinchDistance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+                    initialZoom = currentZoom;
+                    isPinching = true;
+                    showGestureIndicator('🤏 ያስፉ (Pinch to zoom)');
+                } else if (e.touches.length === 1) {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            viewerContainer.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2 && isPinching) {
+                    e.preventDefault();
+                    
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const currentDistance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+                    
+                    const scale = currentDistance / initialPinchDistance;
+                    const newZoom = Math.min(Math.max(initialZoom * scale, 0.5), 3);
+                    
+                    pdfIframe.style.transform = `scale(${newZoom})`;
+                    pdfIframe.style.transformOrigin = 'top left';
+                    currentZoom = newZoom;
+                    zoomLevel.textContent = `${Math.round(newZoom * 100)}%`;
+                    
+                    viewStatus.textContent = `🔍 ${Math.round(newZoom * 100)}%`;
+                }
+            }, { passive: false });
+
+            viewerContainer.addEventListener('touchend', function(e) {
+                if (isPinching) {
+                    isPinching = false;
+                    // Show zoom level after pinch
+                    setTimeout(() => {
+                        viewStatus.textContent = currentZoom === 1 ? '🔒 ተጠብቋል' : `🔍 ${Math.round(currentZoom * 100)}%`;
+                    }, 500);
+                }
+            }, { passive: true });
+
+            // Double tap to reset zoom
+            let lastTapTime = 0;
+            viewerContainer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1) {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTapTime;
+                    if (tapLength < 300 && tapLength > 0) {
+                        // Double tap detected
+                        if (currentZoom !== 1) {
+                            resetZoom();
+                            showGestureIndicator('⟲ ወደ መደበኛ ተመለሰ');
+                        } else {
+                            zoomIn();
+                            showGestureIndicator('🔍 አስፋ (Zoom in)');
+                        }
+                        e.preventDefault();
+                    }
+                    lastTapTime = currentTime;
+                }
+            }, { passive: false });
         }
 
         // ============================================
@@ -509,14 +650,13 @@
                 document.body.classList.add('fullscreen-mode');
                 exitFullscreenBtn.classList.add('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ';
-                // Hide scroll buttons in fullscreen
                 scrollTopBtn.classList.remove('show');
                 scrollBottomBtn.classList.remove('show');
+                showGestureIndicator('⛶ ሙሉ ማያ ሁነታ');
             } else {
                 document.body.classList.remove('fullscreen-mode');
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
-                // Show scroll buttons
                 if (pdfLoaded) {
                     scrollTopBtn.classList.add('show');
                     scrollBottomBtn.classList.add('show');
@@ -530,11 +670,13 @@
         function scrollToTop() {
             const container = document.querySelector('.dashboard-container') || document.body;
             container.scrollTo({ top: 0, behavior: 'smooth' });
+            showGestureIndicator('⬆ ወደ ላይ');
         }
 
         function scrollToBottom() {
             const container = document.querySelector('.dashboard-container') || document.body;
             container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            showGestureIndicator('⬇ ወደ ታች');
         }
 
         // ============================================
@@ -560,7 +702,7 @@
 
             filteredCourses.forEach((course, index) => {
                 const uiTileNode = document.createElement('div');
-                uiTileNode.className = `course-card p-3 rounded-xl bg-[#0f1123] border border-slate-900 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 shadow-md group hover:border-[#00f2fe]/60`;
+                uiTileNode.className = `course-card p-3 rounded-xl bg-[#0f1123] border border-slate-900 flex items-center justify-between cursor-pointer active:scale-[0.95] transition-all duration-200 shadow-md group hover:border-[#00f2fe]/60`;
                 uiTileNode.style.animationDelay = `${index * 0.05}s`;
                 
                 uiTileNode.innerHTML = `
@@ -571,7 +713,7 @@
                             <p class="text-[9px] text-slate-400 mt-0.5">${course.amharicName}</p>
                         </div>
                     </div>
-                    <span class="text-[#00f2fe] font-bold text-[10px] opacity-70 group-hover:opacity-100">📖</span>
+                    <span class="text-[#00f2fe] font-bold text-[10px] opacity-70 group-hover:opacity-100 transition-opacity">📖</span>
                 `;
                 
                 uiTileNode.addEventListener('click', () => openCourseViewer(course));
@@ -587,7 +729,7 @@
             
             APPLICATION_LOCAL_DATABASE.forEach(course => {
                 const navRowElement = document.createElement('button');
-                navRowElement.className = "w-full text-left p-2.5 rounded-xl bg-slate-900/20 hover:bg-slate-800/50 border border-slate-800/40 transition-all flex items-center gap-2.5 active:scale-[0.98]";
+                navRowElement.className = "w-full text-left p-2.5 rounded-xl bg-slate-900/20 hover:bg-slate-800/50 border border-slate-800/40 transition-all flex items-center gap-2.5 active:scale-[0.95]";
                 navRowElement.innerHTML = `
                     <span class="text-lg">${course.emoji}</span>
                     <span class="text-xs font-bold text-slate-300 truncate flex-1">${course.name}</span>
@@ -670,17 +812,9 @@
                 mountDashboardInterface(e.target.value);
             });
 
-            document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
-                toggleSidebar(true);
-            });
-
-            document.getElementById('sidebar-close-btn').addEventListener('click', () => {
-                toggleSidebar(false);
-            });
-
-            document.getElementById('sidebar-backdrop').addEventListener('click', () => {
-                toggleSidebar(false);
-            });
+            document.getElementById('sidebar-toggle-btn').addEventListener('click', () => toggleSidebar(true));
+            document.getElementById('sidebar-close-btn').addEventListener('click', () => toggleSidebar(false));
+            document.getElementById('sidebar-backdrop').addEventListener('click', () => toggleSidebar(false));
 
             document.getElementById('close-viewer-btn').addEventListener('click', () => {
                 viewPdfViewer.classList.add('hidden');
@@ -735,7 +869,7 @@
                 }
             });
 
-            // Show scroll buttons on dashboard scroll
+            // Dashboard scroll
             const dashboard = document.getElementById('screen-dashboard');
             dashboard.addEventListener('scroll', () => {
                 if (dashboard.scrollTop > 100) {
@@ -749,26 +883,24 @@
                     scrollBottomBtn.classList.remove('show');
                 }
             });
+
+            // Setup touch gestures
+            setupTouchGestures();
         }
 
         // ============================================
         // INITIALIZE
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Keep screen awake
             keepScreenAwake();
-            
-            // Initialize Telegram
             initTelegramWebApp();
-            
-            // Mount UI
             mountDashboardInterface('');
             mountSidebarNavigation();
             setupEventListeners();
             
-            console.log('✅ FreshmanHub initialized - Full Screen PDF Viewer');
-            console.log(`📚 ${APPLICATION_LOCAL_DATABASE.length} courses loaded`);
-            console.log('⚡ Fast loading enabled');
+            console.log('✅ FreshmanHub initialized - Full Touch Support');
+            console.log('📚 7 Courses loaded');
+            console.log('👆 Pinch to zoom, Swipe to scroll');
             console.log('💡 Screen wake lock active');
         });
     </script>
