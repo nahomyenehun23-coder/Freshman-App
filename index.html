@@ -6,10 +6,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- Proper Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- PDF.js for Canvas rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* 🛡️ ULTRA ABSOLUTE HIGH-SECURITY ENCRYPTED LAYER STYLING */
         * {
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
@@ -26,9 +27,6 @@
             color: #f8fafc !important; 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         }
-        iframe {
-            pointer-events: auto !important;
-        }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
             -webkit-background-clip: text;
@@ -40,7 +38,6 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
         }
-        /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -51,7 +48,6 @@
             background: #6366f1;
             border-radius: 10px;
         }
-        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -59,7 +55,6 @@
         .course-card {
             animation: fadeIn 0.3s ease-out;
         }
-        /* Safe area for notched phones */
         @supports (padding: max(0px)) {
             .safe-top {
                 padding-top: max(env(safe-area-inset-top), 16px);
@@ -68,7 +63,6 @@
                 padding-bottom: max(env(safe-area-inset-bottom), 16px);
             }
         }
-        /* Loading spinner */
         .loader {
             border: 3px solid #1e293b;
             border-top: 3px solid #6366f1;
@@ -81,13 +75,61 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Canvas container */
+        #pdf-canvas-container {
+            background: #0f1123;
+            overflow-y: auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0;
+        }
+        #pdf-canvas-container canvas {
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 100%;
+            height: auto !important;
+        }
+        .pdf-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px;
+            background: #0f1123;
+            border-bottom: 1px solid #1e293b;
+            flex-wrap: wrap;
+        }
+        .pdf-controls button {
+            padding: 6px 14px;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .pdf-controls button:active {
+            transform: scale(0.95);
+        }
+        .pdf-controls button:hover {
+            background: #2d3748;
+            border-color: #6366f1;
+        }
+        .pdf-controls span {
+            color: #94a3b8;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body class="bg-[#05070f] text-slate-100">
 
     <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 bg-[#05070f]">
         
-        <!-- HEADER DESIGN MODULE -->
+        <!-- HEADER -->
         <header class="sticky top-0 z-40 glass-effect border-b border-slate-900/50 p-4 safe-top">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
@@ -109,7 +151,7 @@
             </div>
         </header>
 
-        <!-- SIDEBAR CONTAINER MODULE -->
+        <!-- SIDEBAR -->
         <div id="sidebar-backdrop" class="fixed inset-0 bg-black/80 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
         <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-[#0f1123] z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 flex flex-col shadow-2xl">
             <div class="p-4 border-b border-slate-900 flex items-center justify-between safe-top">
@@ -119,7 +161,7 @@
             <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5 safe-bottom"></nav>
         </aside>
 
-        <!-- VIEWPORT ENGINE BODY LAYER -->
+        <!-- MAIN CONTENT -->
         <main class="flex-1 p-4 relative z-10">
             <!-- Dashboard -->
             <div id="screen-dashboard" class="space-y-4">
@@ -130,27 +172,35 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
-            <!-- PDF VIEWER -->
-            <div id="screen-pdf-viewer" class="hidden space-y-3 h-[calc(100vh-140px)] flex flex-col">
-                <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
+            <!-- PDF CANVAS VIEWER -->
+            <div id="screen-pdf-viewer" class="hidden flex flex-col h-[calc(100vh-150px)]">
+                <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-t-xl border border-slate-900">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform hover:text-white">
                         ⬅ ወደ ኋላ መመለሻ
                     </button>
                     <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[160px]">Course</span>
                 </div>
                 
-                <!-- Loading spinner -->
-                <div id="pdf-loader" class="hidden flex-1 flex items-center justify-center bg-black/40 rounded-xl border border-slate-800">
+                <!-- PDF Controls -->
+                <div class="pdf-controls">
+                    <button id="prev-page-btn">◀ ቀዳሚ</button>
+                    <span id="page-info">ገጽ 1 / 1</span>
+                    <button id="next-page-btn">ቀጣይ ▶</button>
+                    <button id="zoom-in-btn">🔍+</button>
+                    <button id="zoom-out-btn">🔍−</button>
+                </div>
+
+                <!-- Loading -->
+                <div id="pdf-loader" class="flex-1 flex items-center justify-center bg-black/40 rounded-b-xl border border-slate-800 border-t-0">
                     <div class="text-center">
                         <div class="loader mx-auto mb-4"></div>
-                        <p class="text-slate-400 text-xs">⏳ እየተከፈተ ነው... (Loading...)</p>
+                        <p class="text-slate-400 text-sm">⏳ ፒዲኤፍ እየተከፈተ ነው... (Loading PDF...)</p>
+                        <p class="text-slate-600 text-xs mt-2">ትዕግስት ይስጡ (Please wait)</p>
                     </div>
                 </div>
-                
-                <!-- Secured Google Document Frame Preview -->
-                <div class="flex-1 w-full bg-black/40 rounded-xl overflow-hidden border border-slate-800">
-                    <iframe id="secure-google-preview-frame" src="" class="w-full h-full border-0" allow="autoplay" loading="lazy"></iframe>
-                </div>
+
+                <!-- Canvas Container -->
+                <div id="pdf-canvas-container" class="flex-1 rounded-b-xl border border-slate-900 border-t-0 overflow-y-auto bg-[#0a0c1a]"></div>
             </div>
         </main>
 
@@ -161,8 +211,12 @@
 
     <script>
         // ============================================
-        // APPLICATION DATA - 7 COURSES WITH GOOGLE DRIVE LINKS
-        // Converted to Canvas/PDF embed format
+        // PDF.js Configuration
+        // ============================================
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // ============================================
+        // COURSE DATA - Google Drive PDF Links
         // ============================================
         const APPLICATION_LOCAL_DATABASE = [
             { 
@@ -170,55 +224,55 @@
                 name: "Logic and Critical Thinking", 
                 amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", 
                 emoji: "🧠", 
-                // Converted to embed URL
-                url: "https://drive.google.com/file/d/1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp/preview"
+                // Google Drive direct download URL (for PDF.js to work)
+                url: "https://drive.google.com/uc?export=download&id=1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp"
             },
             { 
                 id: "psychology", 
                 name: "Psychology", 
                 amharicName: "ሳይኮሎጂ (የስነ-ልቦና ትምህርት)", 
                 emoji: "👥", 
-                url: "https://drive.google.com/file/d/1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p/preview"
+                url: "https://drive.google.com/uc?export=download&id=1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p"
             },
             { 
                 id: "anthropology", 
                 name: "Anthropology", 
                 amharicName: "አንትሮፖሎጂ (የሰው ልጅ አመጣጥ ስነ-ባህል)", 
                 emoji: "🦴", 
-                url: "https://drive.google.com/file/d/1h8sNuyWE2ANft8JF7e4LugefEFSeBga8/preview"
+                url: "https://drive.google.com/uc?export=download&id=1h8sNuyWE2ANft8JF7e4LugefEFSeBga8"
             },
             { 
                 id: "economics", 
                 name: "Economics", 
                 amharicName: "ኢኮኖሚክስ (የምጣኔ ሀብት ትምህርት)", 
                 emoji: "📈", 
-                url: "https://drive.google.com/file/d/1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL/preview"
+                url: "https://drive.google.com/uc?export=download&id=1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL"
             },
             { 
                 id: "emerging_tech", 
                 name: "Emerging Technology", 
                 amharicName: "ኤመርጂንግ ቴክኖሎጂ (አዳዲስ ቴክኖሎጂዎች)", 
                 emoji: "🤖", 
-                url: "https://drive.google.com/file/d/1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w/preview"
+                url: "https://drive.google.com/uc?export=download&id=1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w"
             },
             { 
                 id: "global_trends", 
                 name: "Global Trends", 
                 amharicName: "ግሎባል ትሬንድስ (አለም አቀፋዊ ሁኔታዎች)", 
                 emoji: "🌍", 
-                url: "https://drive.google.com/file/d/15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-/preview"
+                url: "https://drive.google.com/uc?export=download&id=15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-"
             },
             { 
                 id: "civics", 
                 name: "Civics", 
                 amharicName: "ሲቪክስና ስነ-ዜጋ", 
                 emoji: "⚖️", 
-                url: "https://drive.google.com/file/d/1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx/preview"
+                url: "https://drive.google.com/uc?export=download&id=1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx"
             }
         ];
 
         // ============================================
-        // DOM REFERENCE VARIABLES
+        // DOM REFERENCES
         // ============================================
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const sidebarLinksTarget = document.getElementById('sidebar-links-target');
@@ -226,12 +280,138 @@
         const viewDashboard = document.getElementById('screen-dashboard');
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
         const wrapperSearchBox = document.getElementById('search-box-container');
-        const secureFrame = document.getElementById('secure-google-preview-frame');
         const activeCourseText = document.getElementById('active-course-banner-text');
         const pdfLoader = document.getElementById('pdf-loader');
+        const canvasContainer = document.getElementById('pdf-canvas-container');
+        const prevPageBtn = document.getElementById('prev-page-btn');
+        const nextPageBtn = document.getElementById('next-page-btn');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const pageInfo = document.getElementById('page-info');
 
         // ============================================
-        // DASHBOARD MOUNT FUNCTION
+        // PDF STATE
+        // ============================================
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let currentScale = 1.2;
+        let currentCourseUrl = '';
+
+        // ============================================
+        // RENDER PDF PAGE TO CANVAS
+        // ============================================
+        function renderPage(pageNum, scale = currentScale) {
+            if (!pdfDoc) return;
+
+            // Clear container but keep the canvas element
+            const existingCanvas = canvasContainer.querySelector('canvas');
+            if (existingCanvas) {
+                existingCanvas.remove();
+            }
+
+            // Create new canvas
+            const canvas = document.createElement('canvas');
+            canvasContainer.appendChild(canvas);
+            
+            pdfDoc.getPage(pageNum).then(page => {
+                const viewport = page.getViewport({ scale: scale });
+                const context = canvas.getContext('2d');
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                // Make canvas responsive
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                
+                page.render(renderContext).promise.then(() => {
+                    console.log(`✅ Page ${pageNum} rendered successfully`);
+                }).catch(err => {
+                    console.error('❌ Error rendering page:', err);
+                });
+            }).catch(err => {
+                console.error('❌ Error getting page:', err);
+            });
+        }
+
+        // ============================================
+        // LOAD PDF FROM GOOGLE DRIVE
+        // ============================================
+        function loadPdf(url) {
+            currentCourseUrl = url;
+            
+            // Show loader, hide canvas container
+            pdfLoader.classList.remove('hidden');
+            canvasContainer.innerHTML = '';
+            
+            // Clear previous PDF
+            pdfDoc = null;
+            currentPage = 1;
+            
+            // Load PDF
+            pdfjsLib.getDocument(url).promise.then(pdf => {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                pageInfo.textContent = `ገጽ 1 / ${totalPages}`;
+                
+                // Hide loader, show canvas
+                pdfLoader.classList.add('hidden');
+                
+                // Render first page
+                renderPage(1);
+                
+                console.log(`✅ PDF loaded: ${totalPages} pages`);
+            }).catch(err => {
+                console.error('❌ Error loading PDF:', err);
+                pdfLoader.innerHTML = `
+                    <div class="text-center">
+                        <p class="text-red-400 text-sm">⚠️ ፒዲኤፍ መክፈት አልተቻለም</p>
+                        <p class="text-slate-500 text-xs mt-2">${err.message}</p>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-[#6366f1] rounded-lg text-xs font-bold">
+                            እንደገና ሞክር (Retry)
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        // ============================================
+        // NAVIGATION FUNCTIONS
+        // ============================================
+        function prevPage() {
+            if (currentPage <= 1 || !pdfDoc) return;
+            currentPage--;
+            renderPage(currentPage);
+            pageInfo.textContent = `ገጽ ${currentPage} / ${totalPages}`;
+        }
+
+        function nextPage() {
+            if (currentPage >= totalPages || !pdfDoc) return;
+            currentPage++;
+            renderPage(currentPage);
+            pageInfo.textContent = `ገጽ ${currentPage} / ${totalPages}`;
+        }
+
+        function zoomIn() {
+            currentScale += 0.2;
+            if (currentScale > 3) currentScale = 3;
+            if (pdfDoc) renderPage(currentPage);
+        }
+
+        function zoomOut() {
+            currentScale -= 0.2;
+            if (currentScale < 0.5) currentScale = 0.5;
+            if (pdfDoc) renderPage(currentPage);
+        }
+
+        // ============================================
+        // DASHBOARD MOUNT
         // ============================================
         function mountDashboardInterface(query = '') {
             dashboardGrid.innerHTML = '';
@@ -274,7 +454,7 @@
         }
 
         // ============================================
-        // SIDEBAR NAVIGATION MOUNT FUNCTION
+        // SIDEBAR NAVIGATION
         // ============================================
         function mountSidebarNavigation() {
             sidebarLinksTarget.innerHTML = '';
@@ -296,7 +476,7 @@
         }
 
         // ============================================
-        // COURSE VIEWER OPEN FUNCTION
+        // OPEN COURSE VIEWER
         // ============================================
         function openCourseViewer(course) {
             viewDashboard.classList.add('hidden');
@@ -304,35 +484,23 @@
             viewPdfViewer.classList.remove('hidden');
             activeCourseText.innerText = `${course.emoji} ${course.name}`;
             
-            // Show loader
+            // Reset canvas container
+            canvasContainer.innerHTML = '';
             pdfLoader.classList.remove('hidden');
-            secureFrame.style.display = 'none';
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-4"></div>
+                    <p class="text-slate-400 text-sm">⏳ ፒዲኤፍ እየተከፈተ ነው... (Loading PDF...)</p>
+                    <p class="text-slate-600 text-xs mt-2">ትዕግስት ይስጡ (Please wait)</p>
+                </div>
+            `;
             
-            // Clear previous content
-            secureFrame.src = '';
-            
-            // Load the course content with a small delay
-            setTimeout(() => {
-                // Add parameters for better Google Drive embedding
-                const embedUrl = course.url + '?usp=sharing';
-                secureFrame.src = embedUrl;
-                
-                // Hide loader after iframe loads
-                secureFrame.onload = function() {
-                    pdfLoader.classList.add('hidden');
-                    secureFrame.style.display = 'block';
-                };
-                
-                // Fallback: hide loader after 5 seconds if iframe doesn't load
-                setTimeout(() => {
-                    pdfLoader.classList.add('hidden');
-                    secureFrame.style.display = 'block';
-                }, 5000);
-            }, 300);
+            // Load PDF
+            loadPdf(course.url);
         }
 
         // ============================================
-        // SIDEBAR TOGGLE FUNCTION
+        // SIDEBAR TOGGLE
         // ============================================
         function toggleSidebar(show) {
             const sidebar = document.getElementById('sidebar-panel');
@@ -350,7 +518,7 @@
         }
 
         // ============================================
-        // THEME TOGGLE FUNCTION
+        // THEME TOGGLE
         // ============================================
         let isDarkTheme = true;
 
@@ -385,56 +553,67 @@
                     Telegram.WebApp.ready();
                     Telegram.WebApp.expand();
                     Telegram.WebApp.enableClosingConfirmation();
-                    console.log('✅ Telegram WebApp initialized successfully');
+                    console.log('✅ Telegram WebApp initialized');
                 } catch (error) {
                     console.warn('⚠️ Telegram WebApp error:', error);
                 }
-            } else {
-                console.log('ℹ️ Running as standalone web app');
             }
         }
 
         // ============================================
-        // EVENT LISTENERS SETUP
+        // EVENT LISTENERS
         // ============================================
         function setupEventListeners() {
-            // Search input
             searchInput.addEventListener('input', (e) => {
                 mountDashboardInterface(e.target.value);
             });
 
-            // Sidebar open
             document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
                 toggleSidebar(true);
             });
 
-            // Sidebar close
             document.getElementById('sidebar-close-btn').addEventListener('click', () => {
                 toggleSidebar(false);
             });
 
-            // Sidebar backdrop
             document.getElementById('sidebar-backdrop').addEventListener('click', () => {
                 toggleSidebar(false);
             });
 
-            // Close viewer
             document.getElementById('close-viewer-btn').addEventListener('click', () => {
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
                 wrapperSearchBox.classList.remove('hidden');
-                secureFrame.src = '';
-                secureFrame.style.display = 'block';
-                pdfLoader.classList.add('hidden');
-                // Re-render dashboard with current search
+                canvasContainer.innerHTML = '';
+                pdfLoader.classList.remove('hidden');
+                pdfLoader.innerHTML = `
+                    <div class="text-center">
+                        <div class="loader mx-auto mb-4"></div>
+                        <p class="text-slate-400 text-sm">⏳ ፒዲኤፍ እየተከፈተ ነው... (Loading PDF...)</p>
+                    </div>
+                `;
+                pdfDoc = null;
+                currentPage = 1;
+                totalPages = 0;
                 mountDashboardInterface(searchInput.value);
             });
 
-            // Theme toggle
             document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
 
-            // Handle escape key
+            // PDF Controls
+            prevPageBtn.addEventListener('click', prevPage);
+            nextPageBtn.addEventListener('click', nextPage);
+            zoomInBtn.addEventListener('click', zoomIn);
+            zoomOutBtn.addEventListener('click', zoomOut);
+
+            // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
+                if (!viewPdfViewer.classList.contains('hidden')) {
+                    if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevPage();
+                    if (e.key === 'ArrowRight' || e.key === 'PageDown') nextPage();
+                    if (e.key === '+' || e.key === '=') zoomIn();
+                    if (e.key === '-') zoomOut();
+                }
                 if (e.key === 'Escape') {
                     if (!document.getElementById('sidebar-panel').classList.contains('-translate-x-full')) {
                         toggleSidebar(false);
@@ -445,47 +624,35 @@
                 }
             });
 
-            // Handle back button (for Android)
-            window.addEventListener('popstate', () => {
-                if (!viewPdfViewer.classList.contains('hidden')) {
-                    document.getElementById('close-viewer-btn').click();
+            // Swipe gestures for mobile
+            let touchStartX = 0;
+            let touchStartY = 0;
+            canvasContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            canvasContainer.addEventListener('touchend', (e) => {
+                const deltaX = e.changedTouches[0].screenX - touchStartX;
+                const deltaY = e.changedTouches[0].screenY - touchStartY;
+                if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                    if (deltaX < 0) nextPage();
+                    else prevPage();
                 }
-            });
+            }, { passive: true });
         }
 
         // ============================================
-        // INITIALIZATION
+        // INITIALIZE
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Telegram
             initTelegramWebApp();
-            
-            // Mount UI
             mountDashboardInterface('');
             mountSidebarNavigation();
-            
-            // Setup events
             setupEventListeners();
-
-            console.log('✅ FreshmanHub initialized successfully');
+            
+            console.log('✅ FreshmanHub initialized with Canvas PDF Viewer');
             console.log(`📚 ${APPLICATION_LOCAL_DATABASE.length} courses loaded`);
-            console.log('📄 Course URLs converted to embed format');
-        });
-
-        // Handle network errors for iframe
-        document.getElementById('secure-google-preview-frame').addEventListener('error', function() {
-            console.warn('⚠️ Failed to load course content');
-            pdfLoader.classList.add('hidden');
-            secureFrame.style.display = 'block';
-            secureFrame.innerHTML = `
-                <div class="flex items-center justify-center h-full">
-                    <div class="text-center p-8">
-                        <p class="text-slate-400 text-sm">⚠️ ፋይሉን መክፈት አልተቻለም</p>
-                        <p class="text-slate-500 text-xs mt-2">Failed to load the document</p>
-                        <p class="text-slate-600 text-[10px] mt-1">Please try again later</p>
-                    </div>
-                </div>
-            `;
         });
     </script>
 </body>
