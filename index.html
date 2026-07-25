@@ -4,21 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- Stable Tailwind CSS v3 Integrated Core Layer -->
+    <!-- Core Tailwind CSS Stable -->
     <script src="https://tailwindcss.com"></script>
-    <!-- Mozilla PDF.js Framework Setup -->
+    <!-- Core Mozilla PDF.js Stable -->
     <script src="https://cloudflare.com"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
     </script>
     <style>
-        /* 🛡️ ULTRA ABSOLUTE HIGH-SECURITY ENCRYPTED LAYER STYLING */
         * {
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
             -ms-user-select: none !important;
             user-select: none !important;
-            -webkit-touch-out: none !important;
+            -webkit-touch-callout: none !important;
             outline: none !important;
             -webkit-tap-highlight-color: transparent;
         }
@@ -28,14 +27,8 @@
             background-color: #05070f !important; 
             color: #f8fafc !important; 
         }
-        img, canvas { 
-            pointer-events: none !important; 
-            -webkit-user-drag: none !important; 
-            user-drag: none !important; 
-        }
+        img, canvas { pointer-events: none !important; -webkit-user-drag: none !important; user-drag: none !important; }
         @media print { body, html, #app-root { display: none !important; visibility: hidden !important; } }
-        
-        .custom-bg-dark { background-color: #05070f !important; }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
             -webkit-background-clip: text;
@@ -43,11 +36,11 @@
         }
     </style>
 </head>
-<body class="custom-bg-dark text-slate-100 font-sans">
+<body class="bg-[#05070f] text-slate-100 font-sans">
 
-    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 custom-bg-dark">
+    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 bg-[#05070f]">
         
-        <!-- HEADER DESIGN MODULE -->
+        <!-- HEADER -->
         <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#0f1123]/90 border-b border-slate-900/50 p-4">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
@@ -60,11 +53,11 @@
             </div>
             <div id="search-box-container" class="relative">
                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">🔍</span>
-                <input type="text" id="course-filter-input" placeholder="ኮርሶችን ይፈልጉ (Search courses...)" class="w-full pl-9 pr-4 py-2 bg-[#05070f] border border-slate-800 rounded-xl focus:border-[#00f2fe] text-xs font-medium transition-all text-slate-200">
+                <input type="text" id="course-filter-input" placeholder="코ርሶችን ይፈልጉ (Search courses...)" class="w-full pl-9 pr-4 py-2 bg-[#05070f] border border-slate-800 rounded-xl focus:border-[#00f2fe] text-xs font-medium transition-all text-slate-200">
             </div>
         </header>
 
-        <!-- SIDEBAR CONTAINER MODULE -->
+        <!-- SIDEBAR -->
         <div id="sidebar-backdrop" class="fixed inset-0 bg-black/80 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
         <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-[#0f1123] z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 flex flex-col shadow-2xl">
             <div class="p-4 border-b border-slate-900 flex items-center justify-between">
@@ -74,9 +67,8 @@
             <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5"></nav>
         </aside>
 
-        <!-- VIEWPORT ENGINE BODY LAYER -->
+        <!-- MAIN SPA BODY -->
         <main class="flex-1 p-4 relative z-10">
-            <!-- 7ቱ ኮርሶች ማሳያ ዋና ገጽ (Dashboard) -->
             <div id="screen-dashboard" class="space-y-4">
                 <div class="p-4 rounded-2xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5">
                     <h2 class="text-sm font-bold text-white">ሰላም ለእናንተ ይሁን 👋</h2>
@@ -85,7 +77,6 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
-            <!-- ፒዲኤፍ መመልከቻ ገጽ (Viewer) - በቅድሚያ የተሸሸገ (hidden) -->
             <div id="screen-pdf-viewer" class="hidden space-y-3">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform">⬅ ወደ ኋላ መመለሻ</button>
@@ -117,19 +108,6 @@
 
         let internalEnginePipelineLock = null;
 
-        (function injectPatrolSecurity() {
-            window.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; }, true);
-            window.addEventListener('keydown', e => {
-                if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
-                const verifyMetaPlatform = navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? e.metaKey : e.ctrlKey;
-                const mapChar = String.fromCharCode(e.keyCode).toLowerCase();
-                if (verifyMetaPlatform && (mapChar === 'c' || mapChar === 'x' || mapChar === 'a' || mapChar === 'u')) {
-                    e.preventDefault(); e.stopPropagation(); return false;
-                }
-            }, true);
-            window.addEventListener('dragstart', e => e.preventDefault(), true);
-        })();
-
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const sidebarLinksTarget = document.getElementById('sidebar-links-target');
         const searchInput = document.getElementById('course-filter-input');
@@ -147,3 +125,22 @@
                 course.name.toLowerCase().includes(normalizedQuery) || course.amharicName.includes(query)
             );
             parsedMatches.forEach(course => {
+                const uiTileNode = document.createElement('div');
+                uiTileNode.className = "p-4 rounded-xl bg-[#0f1123] border border-slate-900 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 shadow-md group hover:border-[#00f2fe]/60";
+                uiTileNode.innerHTML = `
+                    <div class="flex items-center gap-3.5">
+                        <div class="text-2xl p-2 rounded-lg bg-slate-900 border border-slate-800/40">${course.emoji}</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-100 group-hover:text-[#00f2fe] transition-colors">${course.name}</h4>
+                            <p class="text-[10px] text-slate-400 mt-0.5">${course.amharicName}</p>
+                        </div>
+                    </div>
+                    <span class="text-[#00f2fe] font-bold text-xs opacity-70 group-hover:opacity-100">📖 አንብብ</span>
+                `;
+                uiTileNode.addEventListener('click', () => dispatchContinuousPdfPipeline(course));
+                dashboardGrid.appendChild(uiTileNode);
+            });
+        }
+
+        function mountSidebarNavigation() {
+            sidebarLinksTarget.innerHTML = '';
