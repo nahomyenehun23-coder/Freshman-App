@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
             -webkit-user-select: none !important;
@@ -40,8 +41,14 @@
             -webkit-backdrop-filter: blur(20px);
         }
         ::-webkit-scrollbar {
-            width: 0px;
-            height: 0px;
+            width: 3px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f1123;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 10px;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
@@ -71,21 +78,30 @@
             100% { transform: rotate(360deg); }
         }
         
-        #pdf-viewer-container {
+        /* PDF Canvas Container - ALL PAGES */
+        #pdf-canvas-container {
             background: #0a0c1a;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
             height: 100%;
             width: 100%;
             position: relative;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 0;
         }
         
-        #pdf-viewer-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #0a0c1a;
+        #pdf-canvas-container canvas {
+            display: block;
+            margin: 0 auto 15px auto;
+            width: 95%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            background: white;
+            touch-action: none !important;
         }
         
+        /* PDF Controls */
         .pdf-controls {
             display: flex;
             align-items: center;
@@ -121,7 +137,15 @@
             font-size: 10px;
             padding: 0 4px;
         }
+        .pdf-controls .page-info {
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: center;
+        }
         
+        /* Fullscreen Mode */
         .fullscreen-mode header,
         .fullscreen-mode footer,
         .fullscreen-mode .pdf-controls,
@@ -145,7 +169,7 @@
             max-height: 100% !important;
             animation: fadeIn 0.3s ease-out;
         }
-        .fullscreen-mode #pdf-viewer-container {
+        .fullscreen-mode #pdf-canvas-container {
             border-radius: 0 !important;
             border: none !important;
             height: 100% !important;
@@ -213,24 +237,6 @@
             opacity: 1;
         }
         
-        /* BLOCK GOOGLE DRIVE OVERLAY */
-        #drive-blocker {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 20;
-            pointer-events: auto;
-            background: transparent;
-            display: block;
-        }
-        
-        /* Hide Google Drive toolbar */
-        .hide-drive-ui iframe {
-            filter: brightness(0.98);
-        }
-        
         @media (max-width: 480px) {
             .pdf-controls button {
                 font-size: 10px;
@@ -290,7 +296,7 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-2"></div>
             </div>
 
-            <!-- PDF VIEWER -->
+            <!-- PDF VIEWER - ALL PAGES ON CANVAS -->
             <div id="screen-pdf-viewer" class="hidden flex flex-col h-full w-full bg-[#0a0c1a]">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2 border-b border-slate-900 flex-shrink-0">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-all touch-manipulation">
@@ -307,24 +313,21 @@
                     <button id="zoom-in-btn">🔍+</button>
                     <button id="zoom-out-btn">🔍−</button>
                     <button id="reset-zoom-btn">⟲</button>
-                    <span id="zoom-level">100%</span>
+                    <span class="page-info" id="page-info">ገጽ 0 / 0</span>
+                    <span id="zoom-level" class="text-[9px] text-slate-500">100%</span>
                 </div>
 
                 <!-- Loading -->
                 <div id="pdf-loader" class="flex-1 flex items-center justify-center bg-black/40">
                     <div class="text-center">
                         <div class="loader mx-auto mb-3"></div>
-                        <p class="text-slate-400 text-xs">⏳ እየተከፈተ ነው...</p>
-                        <p class="text-slate-600 text-[9px] mt-1">👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)</p>
+                        <p class="text-slate-400 text-xs">⏳ ፒዲኤፍ እየተከፈተ ነው...</p>
+                        <p class="text-slate-500 text-[9px] mt-1">📄 ሁሉም ገጾች እየተከፈቱ ነው (All pages loading)</p>
                     </div>
                 </div>
 
-                <!-- PDF Viewer Container -->
-                <div id="pdf-viewer-container" class="flex-1 bg-[#0a0c1a] relative overflow-hidden">
-                    <iframe id="pdf-iframe" src="" class="w-full h-full" allow="autoplay" loading="eager" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
-                    <!-- BLOCKER - Prevents clicking on Google Drive elements -->
-                    <div id="drive-blocker"></div>
-                </div>
+                <!-- PDF Canvas Container - ALL PAGES -->
+                <div id="pdf-canvas-container" class="flex-1 bg-[#0a0c1a] relative overflow-y-auto"></div>
             </div>
         </main>
 
@@ -343,64 +346,9 @@
 
     <script>
         // ============================================
-        // BLOCK ALL GOOGLE DRIVE NAVIGATION
+        // PDF.js Configuration
         // ============================================
-        function blockGoogleDriveNavigation() {
-            // 1. Block all link clicks to Google Drive
-            document.addEventListener('click', function(e) {
-                let target = e.target;
-                while (target && target !== document) {
-                    if (target.tagName === 'A') {
-                        const href = target.getAttribute('href');
-                        if (href && href.includes('drive.google.com')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🚫 Blocked Google Drive link click');
-                            showGestureIndicator('🚫 ወደ Google Drive መሄድ አይቻልም');
-                            return false;
-                        }
-                    }
-                    target = target.parentElement;
-                }
-            }, true);
-
-            // 2. Block window.open to Google Drive
-            const originalOpen = window.open;
-            window.open = function(url, name, specs) {
-                if (url && url.includes('drive.google.com')) {
-                    console.log('🚫 Blocked window.open to Google Drive');
-                    showGestureIndicator('🚫 ወደ Google Drive መሄድ አይቻልም');
-                    return null;
-                }
-                return originalOpen.call(this, url, name, specs);
-            };
-
-            // 3. Block iframe navigation to Google Drive
-            const originalSetAttribute = HTMLIFrameElement.prototype.setAttribute;
-            HTMLIFrameElement.prototype.setAttribute = function(name, value) {
-                if (name === 'src' && value && value.includes('drive.google.com')) {
-                    // Allow only embed/preview URLs
-                    if (value.includes('/preview') || value.includes('uc?export=download')) {
-                        return originalSetAttribute.call(this, name, value);
-                    }
-                    console.log('🚫 Blocked iframe navigation to:', value);
-                    return null;
-                }
-                return originalSetAttribute.call(this, name, value);
-            };
-
-            // 4. Block navigation to Google Drive
-            window.addEventListener('beforeunload', function(e) {
-                // Block any navigation to Google Drive
-                if (window.location.href.includes('drive.google.com')) {
-                    e.preventDefault();
-                    e.returnValue = '';
-                    window.location.href = window.location.origin;
-                }
-            });
-
-            console.log('✅ Google Drive navigation blocked');
-        }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         // ============================================
         // PREVENT SCREEN DIMMING
@@ -416,16 +364,16 @@
         }
 
         // ============================================
-        // COURSE DATA
+        // COURSE DATA - Google Drive File IDs
         // ============================================
         const APPLICATION_LOCAL_DATABASE = [
-            { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", url: "https://drive.google.com/file/d/1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp/preview" },
-            { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ", emoji: "👥", url: "https://drive.google.com/file/d/1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p/preview" },
-            { id: "anthropology", name: "Anthropology", amharicName: "አንትሮፖሎጂ", emoji: "🦴", url: "https://drive.google.com/file/d/1h8sNuyWE2ANft8JF7e4LugefEFSeBga8/preview" },
-            { id: "economics", name: "Economics", amharicName: "ኢኮኖሚክስ", emoji: "📈", url: "https://drive.google.com/file/d/1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL/preview" },
-            { id: "emerging_tech", name: "Emerging Technology", amharicName: "ኤመርጂንግ ቴክኖሎጂ", emoji: "🤖", url: "https://drive.google.com/file/d/1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w/preview" },
-            { id: "global_trends", name: "Global Trends", amharicName: "ግሎባል ትሬንድስ", emoji: "🌍", url: "https://drive.google.com/file/d/15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-/preview" },
-            { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", url: "https://drive.google.com/file/d/1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx/preview" }
+            { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", fileId: "1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp" },
+            { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ", emoji: "👥", fileId: "1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p" },
+            { id: "anthropology", name: "Anthropology", amharicName: "አንትሮፖሎጂ", emoji: "🦴", fileId: "1h8sNuyWE2ANft8JF7e4LugefEFSeBga8" },
+            { id: "economics", name: "Economics", amharicName: "ኢኮኖሚክስ", emoji: "📈", fileId: "1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL" },
+            { id: "emerging_tech", name: "Emerging Technology", amharicName: "ኤመርጂንግ ቴክኖሎጂ", emoji: "🤖", fileId: "1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w" },
+            { id: "global_trends", name: "Global Trends", amharicName: "ግሎባል ትሬንድስ", emoji: "🌍", fileId: "15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-" },
+            { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", fileId: "1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx" }
         ];
 
         // ============================================
@@ -437,9 +385,8 @@
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
         const activeCourseText = document.getElementById('active-course-banner-text');
         const pdfLoader = document.getElementById('pdf-loader');
-        const pdfIframe = document.getElementById('pdf-iframe');
-        const viewerContainer = document.getElementById('pdf-viewer-container');
-        const driveBlocker = document.getElementById('drive-blocker');
+        const canvasContainer = document.getElementById('pdf-canvas-container');
+        const pageInfo = document.getElementById('page-info');
         const zoomLevel = document.getElementById('zoom-level');
         const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
         const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
@@ -448,69 +395,159 @@
         // ============================================
         // STATE
         // ============================================
+        let pdfDoc = null;
+        let totalPages = 0;
+        let currentScale = 1.2;
         let currentCourse = null;
-        let currentZoom = 1;
         let isFullscreen = false;
         let pdfLoaded = false;
+        let allPagesRendered = false;
 
         // ============================================
-        // OPEN COURSE VIEWER
+        // GET GOOGLE DRIVE PDF URL
         // ============================================
-        function openCourseViewer(course) {
-            currentCourse = course;
-            pdfLoaded = false;
-            
-            viewDashboard.classList.add('hidden');
-            viewPdfViewer.classList.remove('hidden');
-            activeCourseText.innerText = `${course.emoji} ${course.name}`;
-            
-            pdfLoader.classList.remove('hidden');
-            pdfIframe.style.display = 'none';
-            
-            currentZoom = 1;
-            pdfIframe.style.transform = 'scale(1)';
-            pdfIframe.style.transformOrigin = 'top left';
-            zoomLevel.textContent = '100%';
-            
-            // Load PDF in iframe
-            pdfIframe.src = course.url;
-            
-            pdfIframe.onload = function() {
-                pdfLoaded = true;
-                pdfLoader.classList.add('hidden');
-                pdfIframe.style.display = 'block';
-                showGestureIndicator('👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)');
-            };
-            
-            // Fallback: hide loader after 4 seconds
-            setTimeout(() => {
-                if (!pdfLoaded) {
-                    pdfLoader.classList.add('hidden');
-                    pdfIframe.style.display = 'block';
-                }
-            }, 4000);
+        function getGoogleDrivePdfUrl(fileId) {
+            return `https://drive.google.com/uc?export=download&id=${fileId}`;
         }
+
+        // ============================================
+        // RENDER ALL PAGES
+        // ============================================
+        function renderAllPages(scale = currentScale) {
+            if (!pdfDoc) return;
+
+            // Clear container
+            canvasContainer.innerHTML = '';
+            
+            let renderedCount = 0;
+            const total = totalPages;
+
+            // Render each page
+            for (let pageNum = 1; pageNum <= total; pageNum++) {
+                const pageWrapper = document.createElement('div');
+                pageWrapper.className = 'page-wrapper';
+                pageWrapper.style.marginBottom = '15px';
+                pageWrapper.style.display = 'flex';
+                pageWrapper.style.justifyContent = 'center';
+                pageWrapper.style.width = '100%';
+                
+                const canvas = document.createElement('canvas');
+                canvas.style.width = '95%';
+                canvas.style.height = 'auto';
+                canvas.style.borderRadius = '8px';
+                canvas.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
+                canvas.style.background = 'white';
+                canvas.style.touchAction = 'none';
+                
+                pageWrapper.appendChild(canvas);
+                canvasContainer.appendChild(pageWrapper);
+
+                pdfDoc.getPage(pageNum).then(page => {
+                    const viewport = page.getViewport({ scale: scale });
+                    const context = canvas.getContext('2d');
+                    
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    
+                    return page.render(renderContext).promise;
+                }).then(() => {
+                    renderedCount++;
+                    pageInfo.textContent = `ገጽ ${renderedCount} / ${total}`;
+                    
+                    if (renderedCount === total) {
+                        allPagesRendered = true;
+                        pdfLoaded = true;
+                        pdfLoader.classList.add('hidden');
+                        console.log(`✅ All ${total} pages rendered successfully`);
+                        showGestureIndicator(`📄 ${total} ገጾች ተከፈቱ (${total} pages loaded)`);
+                    }
+                }).catch(err => {
+                    console.error('❌ Error rendering page:', err);
+                });
+            }
+        }
+
+        // ============================================
+        // LOAD PDF
+        // ============================================
+        function loadPdfFromDrive(fileId) {
+            const url = getGoogleDrivePdfUrl(fileId);
+            
+            pdfjsLib.getDocument(url).promise.then(pdf => {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                pageInfo.textContent = `ገጽ 0 / ${totalPages}`;
+                
+                // Render ALL pages
+                renderAllPages(currentScale);
+                
+                console.log(`✅ PDF loaded: ${totalPages} pages`);
+                console.log('📄 Rendering all pages...');
+            }).catch(err => {
+                console.error('❌ Error loading PDF:', err);
+                pdfLoader.classList.remove('hidden');
+                pdfLoader.innerHTML = `
+                    <div class="text-center p-6">
+                        <div class="text-5xl mb-4">⚠️</div>
+                        <p class="text-red-400 text-sm font-bold">ፒዲኤፍ መክፈት አልተቻለም</p>
+                        <p class="text-slate-500 text-xs mt-2">${err.message || 'Failed to load PDF'}</p>
+                        <p class="text-slate-600 text-[10px] mt-1">Please make sure the file is publicly accessible</p>
+                        <div class="mt-4">
+                            <button onclick="retryLoadPdf()" class="bg-[#6366f1] text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-all">
+                                🔄 እንደገና ሞክር
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // ============================================
+        // RETRY LOAD
+        // ============================================
+        function retryLoadPdf() {
+            if (!currentCourse) return;
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-3"></div>
+                    <p class="text-slate-400 text-xs">⏳ እንደገና እየሞከረ...</p>
+                </div>
+            `;
+            canvasContainer.innerHTML = '';
+            loadPdfFromDrive(currentCourse.fileId);
+        }
+        window.retryLoadPdf = retryLoadPdf;
 
         // ============================================
         // ZOOM FUNCTIONS
         // ============================================
         function updateZoom(scale) {
-            currentZoom = Math.min(Math.max(scale, 0.5), 3);
-            pdfIframe.style.transform = `scale(${currentZoom})`;
-            pdfIframe.style.transformOrigin = 'top left';
-            zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+            currentScale = Math.min(Math.max(scale, 0.5), 3);
+            zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
+            
+            // Re-render all pages with new scale
+            if (pdfDoc && allPagesRendered) {
+                renderAllPages(currentScale);
+                showGestureIndicator(`🔍 ${Math.round(currentScale * 100)}%`);
+            }
         }
 
         function zoomIn() {
-            updateZoom(currentZoom + 0.1);
+            updateZoom(currentScale + 0.1);
         }
 
         function zoomOut() {
-            updateZoom(currentZoom - 0.1);
+            updateZoom(currentScale - 0.1);
         }
 
         function resetZoom() {
-            updateZoom(1);
+            updateZoom(1.2);
         }
 
         // ============================================
@@ -541,6 +578,36 @@
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
             }
+        }
+
+        // ============================================
+        // OPEN COURSE VIEWER
+        // ============================================
+        function openCourseViewer(course) {
+            currentCourse = course;
+            pdfLoaded = false;
+            allPagesRendered = false;
+            
+            viewDashboard.classList.add('hidden');
+            viewPdfViewer.classList.remove('hidden');
+            activeCourseText.innerText = `${course.emoji} ${course.name}`;
+            
+            canvasContainer.innerHTML = '';
+            
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-3"></div>
+                    <p class="text-slate-400 text-xs">⏳ ፒዲኤፍ እየተከፈተ ነው...</p>
+                    <p class="text-slate-500 text-[9px] mt-1">📄 ሁሉም ገጾች እየተከፈቱ ነው (All pages loading)</p>
+                </div>
+            `;
+            
+            // Reset zoom
+            currentScale = 1.2;
+            zoomLevel.textContent = '100%';
+            
+            loadPdfFromDrive(course.fileId);
         }
 
         // ============================================
@@ -664,10 +731,11 @@
             document.getElementById('close-viewer-btn').addEventListener('click', () => {
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
-                pdfIframe.src = '';
-                pdfIframe.style.display = 'none';
-                currentZoom = 1;
+                canvasContainer.innerHTML = '';
+                pdfDoc = null;
+                totalPages = 0;
                 pdfLoaded = false;
+                allPagesRendered = false;
                 document.body.classList.remove('fullscreen-mode');
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
@@ -707,66 +775,25 @@
                 }
             });
 
-            // Touch gestures for zoom on iframe
-            let lastTouchDistance = 0;
-            let initialIframeZoom = 1;
-            
-            viewerContainer.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 2) {
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    lastTouchDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    initialIframeZoom = currentZoom;
-                    showGestureIndicator('🤏 ያስፉ (Pinch to zoom)');
-                }
-            }, { passive: true });
-
-            viewerContainer.addEventListener('touchmove', function(e) {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const currentDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    
-                    const scale = currentDistance / lastTouchDistance;
-                    const newZoom = Math.min(Math.max(initialIframeZoom * scale, 0.5), 3);
-                    currentZoom = newZoom;
-                    pdfIframe.style.transform = `scale(${newZoom})`;
-                    pdfIframe.style.transformOrigin = 'top left';
-                    zoomLevel.textContent = `${Math.round(newZoom * 100)}%`;
-                }
-            }, { passive: false });
-
-            viewerContainer.addEventListener('touchend', function(e) {
-                if (e.touches.length < 2) {
-                    lastTouchDistance = 0;
-                }
-            }, { passive: true });
+            // Scroll to top/bottom on canvas
+            canvasContainer.addEventListener('scroll', function() {
+                // Optional: Add scroll indicators if needed
+            });
         }
 
         // ============================================
         // INITIALIZE
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            // BLOCK GOOGLE DRIVE FIRST
-            blockGoogleDriveNavigation();
-            
             keepScreenAwake();
             initTelegramWebApp();
             mountDashboardInterface();
             mountSidebarNavigation();
             setupEventListeners();
             
-            console.log('✅ FreshmanHub initialized');
-            console.log('🚫 Google Drive navigation BLOCKED');
+            console.log('✅ FreshmanHub initialized - ALL PAGES on Canvas');
             console.log('📚 7 Courses loaded');
-            console.log('👆 2 fingers: Pinch to zoom');
+            console.log('📄 All PDF pages will render on Canvas');
             console.log('💡 Screen wake lock active');
         });
     </script>
