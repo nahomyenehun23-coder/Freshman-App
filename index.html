@@ -1,382 +1,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Anthropology · Freshman Course</title>
-    <!-- Telegram Mini App styling (neutral, card-based) -->
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>📚 Anthro · Read-only</title>
+  <!-- PDF.js core & worker -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    /* ═══════════════════ ZERO-TOLERANCE ANTI-COPY ═══════════════════ */
+    * {
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+      -webkit-touch-callout: none !important;
+      -webkit-tap-highlight-color: transparent;
+      outline: none !important;
+      -webkit-user-drag: none !important;
+      user-drag: none !important;
+      box-sizing: border-box;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+      background: #0b0d1a;
+      color: #eef2ff;
+    }
+    /* kill print */
+    @media print {
+      body { display: none !important; }
+    }
+    /* scrollbar premium */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #a855f7, #06b6d4); border-radius: 12px; }
 
-        body {
-            background: #f5f3f0;
-            color: #1e1e1e;
-            padding: 16px 12px 40px;
-            min-height: 100vh;
-        }
+    /* ═══════════════════ LAYOUT ═══════════════════ */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      background: radial-gradient(circle at 20% 30%, #14162e, #070913);
+      overflow: hidden;
+    }
+    /* header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(10, 12, 30, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+    .hamburger {
+      font-size: 26px;
+      cursor: pointer;
+      filter: drop-shadow(0 0 6px #a855f7);
+      transition: 0.2s;
+      background: none;
+      border: none;
+      color: #c4b5fd;
+      padding: 0 6px;
+    }
+    .hamburger:active { transform: scale(0.92); }
+    .header-title {
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.3px;
+      background: linear-gradient(135deg, #a78bfa, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .mode-toggle {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 30px;
+      padding: 6px 12px;
+      font-size: 16px;
+      color: #cbd5e1;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+    .mode-toggle:active { opacity: 0.6; }
 
-        .app-container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
+    /* main container */
+    .main-area {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    /* sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100vh;
+      background: rgba(12, 14, 33, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(255,255,255,0.04);
+      transition: left 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+      z-index: 100;
+      padding: 28px 16px 20px;
+      overflow-y: auto;
+      box-shadow: 8px 0 40px rgba(0,0,0,0.7);
+    }
+    .sidebar.open { left: 0; }
+    .sidebar-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 28px;
+      float: right;
+      margin-top: -8px;
+      cursor: pointer;
+    }
+    .sidebar-close:active { opacity: 0.5; }
+    .sidebar h2 {
+      font-size: 18px;
+      margin: 24px 0 18px 0;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      background: linear-gradient(135deg, #c084fc, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .course-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .course-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid transparent;
+      transition: 0.2s;
+      font-size: 15px;
+      font-weight: 500;
+      color: #e0e7ff;
+      cursor: pointer;
+    }
+    .course-item:active { transform: scale(0.97); background: rgba(168, 85, 247, 0.12); border-color: #7c3aed40; }
+    .course-item .emoji { font-size: 22px; filter: drop-shadow(0 0 4px #a855f770); }
+    .course-item.active {
+      background: linear-gradient(135deg, #6d28d930, #0891b230);
+      border-color: #7c3aed70;
+      box-shadow: 0 0 20px #7c3aed20;
+    }
 
-        /* header / course badge */
-        .course-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #d6d0c9;
-        }
+    /* dashboard / viewer */
+    .viewer {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 12px 40px;
+      scroll-behavior: smooth;
+      background: radial-gradient(ellipse at 50% 0%, #11132b, #070912);
+    }
+    /* dashboard grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 12px;
+      padding-bottom: 24px;
+    }
+    .dash-card {
+      background: rgba(255,255,255,0.02);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.03);
+      border-radius: 28px;
+      padding: 20px 12px 16px;
+      text-align: center;
+      transition: 0.2s;
+      box-shadow: 0 8px 24px -12px #00000080;
+      cursor: pointer;
+    }
+    .dash-card:active { transform: scale(0.96); background: rgba(168, 85, 247, 0.08); border-color: #7c3aed50; }
+    .dash-card .emoji-big { font-size: 38px; display: block; margin-bottom: 6px; }
+    .dash-card .label { font-size: 14px; font-weight: 600; color: #d4daf0; letter-spacing: -0.2px; }
 
-        .course-badge {
-            background: #2c3e50;
-            color: #f0ebe5;
-            font-weight: 600;
-            font-size: 0.8rem;
-            letter-spacing: 0.3px;
-            padding: 6px 14px;
-            border-radius: 30px;
-            text-transform: uppercase;
-        }
+    /* PDF canvas container */
+    .pdf-container {
+      max-width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .pdf-container canvas {
+      width: 100%;
+      height: auto;
+      background: #161a30;
+      border-radius: 12px;
+      box-shadow: 0 12px 40px -8px #000000cc;
+      border: 1px solid rgba(255,255,255,0.02);
+      pointer-events: none;  /* extra block */
+    }
+    .pdf-loader {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+      font-size: 15px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #2d2f4a;
+      border-top: 3px solid #a855f7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-        .course-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #1f2a36;
-            letter-spacing: -0.3px;
-            line-height: 1.2;
-        }
+    /* light mode */
+    .light-mode {
+      background: #f0f2fc;
+      color: #1e1f38;
+    }
+    .light-mode .header { background: rgba(240, 242, 252, 0.8); border-bottom: 1px solid #d0d5e8; }
+    .light-mode .sidebar { background: rgba(240, 242, 252, 0.97); border-right: 1px solid #d0d5e8; }
+    .light-mode .viewer { background: radial-gradient(ellipse at 50% 0%, #eaeef9, #d9def0); }
+    .light-mode .dash-card { background: rgba(255,255,255,0.4); border-color: #cdd3e8; }
+    .light-mode .course-item { color: #1e1f38; }
+    .light-mode .header-title { background: linear-gradient(135deg, #7c3aed, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .light-mode .pdf-container canvas { background: #fefeff; border-color: #d0d5e8; }
+    .light-mode .mode-toggle { background: rgba(0,0,0,0.04); border-color: #b0b9d4; color: #1e1f38; }
 
-        .subtitle {
-            color: #5e5a55;
-            font-size: 0.9rem;
-            margin-top: 4px;
-            padding-left: 4px;
-            border-left: 4px solid #b8a99a;
-            padding-left: 10px;
-        }
-
-        /* card / block */
-        .card {
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02);
-            padding: 20px 18px;
-            margin-bottom: 20px;
-            border: 1px solid #eae4dd;
-            transition: 0.1s ease;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 14px;
-            border-bottom: 1px dashed #ded8d0;
-            padding-bottom: 10px;
-        }
-
-        .card-header h2 {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #1e2a36;
-            letter-spacing: -0.2px;
-        }
-
-        .card-header .chapter-tag {
-            background: #eae1d7;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #3a322b;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .content-block {
-            font-size: 0.96rem;
-            line-height: 1.6;
-            color: #1e1b18;
-        }
-
-        .content-block p {
-            margin-bottom: 12px;
-        }
-
-        .content-block ul, .content-block ol {
-            margin: 8px 0 12px 20px;
-        }
-
-        .content-block li {
-            margin-bottom: 6px;
-        }
-
-        .highlight-box {
-            background: #f9f6f1;
-            border-left: 6px solid #b8a28b;
-            padding: 14px 16px;
-            border-radius: 12px;
-            margin: 16px 0;
-            font-size: 0.95rem;
-        }
-
-        .glossary-term {
-            font-weight: 600;
-            color: #2a3f4d;
-        }
-
-        .definition {
-            background: #f2efe9;
-            padding: 8px 14px;
-            border-radius: 18px;
-            display: inline-block;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin: 4px 0;
-        }
-
-        .example-box {
-            background: #e9e1d9;
-            border-radius: 16px;
-            padding: 12px 16px;
-            margin: 12px 0;
-            font-size: 0.9rem;
-            border: 1px solid #d5cdc3;
-        }
-
-        .grid-2col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin: 12px 0;
-        }
-
-        .subfield-tag {
-            background: #d7d0c7;
-            padding: 6px 10px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #1f2c38;
-        }
-
-        hr {
-            border: none;
-            border-top: 2px dotted #cfc6bc;
-            margin: 18px 0;
-        }
-
-        .footer-note {
-            font-size: 0.8rem;
-            color: #706a62;
-            text-align: center;
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px solid #ddd6cd;
-        }
-
-        @media (max-width: 480px) {
-            .grid-2col {
-                grid-template-columns: 1fr;
-            }
-            .course-title {
-                font-size: 1.2rem;
-            }
-        }
-
-        /* small utility */
-        .text-muted {
-            color: #5b554d;
-        }
-        .mt-1 { margin-top: 8px; }
-        .mb-1 { margin-bottom: 8px; }
-    </style>
+    /* responsive */
+    @media (max-width: 480px) {
+      .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .dash-card { padding: 14px 8px; }
+      .dash-card .emoji-big { font-size: 30px; }
+      .header-title { font-size: 15px; }
+    }
+  </style>
 </head>
 <body>
-<div class="app-container">
+<div id="app">
+  <!-- header -->
+  <div class="header">
+    <button class="hamburger" id="menuToggle" aria-label="menu">☰</button>
+    <span class="header-title" id="headerCourse">📖 Anthropology</span>
+    <button class="mode-toggle" id="themeToggle">🌓</button>
+  </div>
 
-    <!-- header -->
-    <div class="course-header">
-        <span class="course-badge">📘 Anthro 101</span>
-        <span class="course-title">Anthropology</span>
-    </div>
-    <div class="subtitle">Freshman course · Human culture, diversity &amp; identity</div>
-
-    <!-- ======== CARD 1: What is Anthropology? ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>🧬 What is Anthropology?</h2>
-            <span class="chapter-tag">Unit 1</span>
-        </div>
-        <div class="content-block">
-            <p><span class="glossary-term">Anthropology</span> (from Greek <em>anthropos</em> + <em>logos</em>) – the study of humankind.</p>
-            <div class="highlight-box">
-                <strong>Scope:</strong> human origins, development, cultural variation, kinship, marriage, race, ethnicity, and more.
-            </div>
-            <p><span class="definition">🔍 Holistic · Relativistic · Focused</span></p>
-            <ul>
-                <li><strong>Physical/Biological</strong> – human evolution, primatology, genetics</li>
-                <li><strong>Archaeology</strong> – material remains: artefacts, features, eco‑facts</li>
-                <li><strong>Linguistic</strong> – structural, historical, socio‑linguistics</li>
-                <li><strong>Socio‑Cultural</strong> – ethnography, ethnology, society &amp; culture</li>
-            </ul>
-            <div class="example-box">
-                <strong>🔬 Ethnography</strong> = systematic study of individual cultures.<br>
-                <strong>📊 Ethnology</strong> = comparative study of two or more cultures.
-            </div>
-        </div>
+  <!-- main -->
+  <div class="main-area">
+    <!-- sidebar -->
+    <div class="sidebar" id="sidebar">
+      <button class="sidebar-close" id="closeSidebar">✕</button>
+      <h2>📚 Courses</h2>
+      <div class="course-list" id="courseList">
+        <!-- injected by js -->
+      </div>
     </div>
 
-    <!-- ======== CARD 2: Culture & its features ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>🌍 Culture &amp; Ties</h2>
-            <span class="chapter-tag">Unit 2</span>
-        </div>
-        <div class="content-block">
-            <p><span class="glossary-term">Culture</span> – learned, shared, symbolic, all‑encompassing, integrated, adaptive/maladaptive, dynamic.</p>
-            <ul>
-                <li><strong>Enculturation</strong> – learning culture after birth.</li>
-                <li><strong>Material culture</strong> – objects (tools, buildings).</li>
-                <li><strong>Non‑material culture</strong> – values, beliefs, norms, language.</li>
-            </ul>
-            <div class="grid-2col">
-                <div><span class="subfield-tag">Folkways</span> informal norms (e.g. offering seat).</div>
-                <div><span class="subfield-tag">Mores</span> strict norms, severe sanctions.</div>
-            </div>
-            <p><strong>Ethnocentrism</strong> – judging other cultures by own standards.<br>
-            <strong>Cultural relativism</strong> – understanding behaviour within its own context.</p>
-            <div class="highlight-box">
-                <strong>Human rights</strong> supersede cultural practices when they harm individuals (e.g. FGM, slavery).
-            </div>
-        </div>
+    <!-- viewer -->
+    <div class="viewer" id="viewer">
+      <!-- dashboard or pdf render -->
+      <div id="renderTarget"></div>
     </div>
-
-    <!-- ======== CARD 3: Marriage, Family, Kinship ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>💍 Marriage &amp; Kinship</h2>
-            <span class="chapter-tag">Unit 2 (cont.)</span>
-        </div>
-        <div class="content-block">
-            <p><strong>Marriage rules:</strong> exogamy (outside group), endogamy (inside group).</p>
-            <ul>
-                <li><strong>Cross‑cousin</strong> – opposite‑sex siblings’ children.</li>
-                <li><strong>Parallel‑cousin</strong> – same‑sex siblings’ children.</li>
-                <li><strong>Levirate</strong> – widow marries husband’s brother.</li>
-                <li><strong>Sororate</strong> – widower marries wife’s sister.</li>
-            </ul>
-            <p><strong>Polygyny</strong> (man, multiple wives) · <strong>Polyandry</strong> (woman, multiple husbands).</p>
-            <div class="example-box">
-                <strong>Economic aspects:</strong> Bride‑price, Bride‑service, Dowry.<br>
-                <strong>Post‑marital residence:</strong> patrilocal, matrilocal, avunculocal, ambilocal, neolocal.
-            </div>
-        </div>
-    </div>
-
-    <!-- ======== CARD 4: Human Diversity & Ethiopia ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>🌄 Human Diversity · Ethiopia</h2>
-            <span class="chapter-tag">Unit 3</span>
-        </div>
-        <div class="content-block">
-            <p><span class="glossary-term">Humanity</span> = <em>Homo sapiens sapiens</em> – bipedal, large brain, language, culture.</p>
-            <p><strong>Cosmologies</strong> – traditional/religious origin stories.<br>
-            <strong>Evolution</strong> – Darwinian: replication, variation, selection.</p>
-            <hr>
-            <p><strong>Cultural areas in Ethiopia:</strong></p>
-            <ul>
-                <li><strong>Plough culture</strong> – highlands, agriculture.</li>
-                <li><strong>Enset culture</strong> – south (Gurage, Sidama, Gedeo).</li>
-                <li><strong>Pastoral culture</strong> – lowlands (Afar, Somali, Borena).</li>
-            </ul>
-            <div class="highlight-box">
-                <strong>Biocultural evolution</strong> – biology and culture influence each other (e.g. brain size, diet, clothing).
-            </div>
-        </div>
-    </div>
-
-    <!-- ======== CARD 5: Marginalization & Vulnerability ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>⚖️ Marginalization</h2>
-            <span class="chapter-tag">Unit 4</span>
-        </div>
-        <div class="content-block">
-            <p><span class="glossary-term">Marginalization</span> – exclusion from social, economic, or political life.</p>
-            <ul>
-                <li><strong>Gender‑based</strong> – girls’ education, FGM, early marriage.</li>
-                <li><strong>Occupational</strong> – tanners, potters, weavers, ironsmiths.</li>
-                <li><strong>Age‑based</strong> – children, elderly.</li>
-            </ul>
-            <div class="example-box">
-                <strong>Vulnerability</strong> – exposure to physical/emotional harm.<br>
-                <strong>Minority groups</strong> – numerical or power minorities.
-            </div>
-            <p>Human rights conventions condemn discrimination against women, children, disabled, elderly, and minorities.</p>
-        </div>
-    </div>
-
-    <!-- ======== CARD 6: Identity, Ethnicity & Race ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>🧑‍🤝‍🧑 Identity &amp; Ethnicity</h2>
-            <span class="chapter-tag">Unit 5</span>
-        </div>
-        <div class="content-block">
-            <p><strong>Ethnicity</strong> – shared descent, culture, language, religion, and solidarity.</p>
-            <ul>
-                <li><strong>Primordialism</strong> – ethnicity is innate, ancient, fixed.</li>
-                <li><strong>Instrumentalism</strong> – ethnicity as a tool for political/economic goals.</li>
-                <li><strong>Social constructivism</strong> – ethnicity is negotiated, flexible, situational.</li>
-            </ul>
-            <p><strong>Barth’s view:</strong> ethnicity is about social interaction and cultural differentiation – “us” vs “them”.</p>
-            <div class="highlight-box">
-                <strong>Race</strong> – a social construct; human genetic variation is minimal (&gt;99% identical).<br>
-                Historically divided into “Europeaus, Americanus, Asiaticus, Africanus” – now obsolete.
-            </div>
-            <p><strong>Ethnic identity</strong> – affiliative construct shaped by racial, natal, symbolic, and cultural factors.</p>
-        </div>
-    </div>
-
-    <!-- ======== CARD 7: Quick concepts ======== -->
-    <div class="card">
-        <div class="card-header">
-            <h2>📚 Key concepts</h2>
-            <span class="chapter-tag">recap</span>
-        </div>
-        <div class="content-block">
-            <div class="grid-2col">
-                <div><span class="subfield-tag">Enculturation</span> learning culture</div>
-                <div><span class="subfield-tag">Ethnocentrism</span> judge others</div>
-                <div><span class="subfield-tag">Cultural relativism</span> context matters</div>
-                <div><span class="subfield-tag">Diffusion</span> borrowing traits</div>
-                <div><span class="subfield-tag">Acculturation</span> continuous contact</div>
-                <div><span class="subfield-tag">Globalization</span> interconnected change</div>
-            </div>
-            <hr>
-            <p><strong>Misconceptions:</strong> anthropology is not only about “primitive” societies, rural areas, or fossils – it covers all human groups, past and present.</p>
-            <div class="example-box">
-                <strong>🔗 4 sub‑fields:</strong> Physical, Archaeology, Linguistic, Socio‑Cultural.
-            </div>
-        </div>
-    </div>
-
-    <!-- footer -->
-    <div class="footer-note">
-        📖 Anthropology Freshman Course · compiled from lecture notes · for tutorial &amp; reference
-    </div>
-
+  </div>
 </div>
+
+<script>
+  (function() {
+    // ─── SECURITY: ZERO TOLERANCE ────────────────────────────────
+    // block context menu (right click / long press)
+    document.addEventListener('contextmenu', e => e.preventDefault(), true);
+    // block keyboard inspect / copy / select
+    document.addEventListener('keydown', e => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      // Ctrl+C, Ctrl+X, Ctrl+A, Ctrl+U, F12, Ctrl+Shift+I, Cmd+Option+U
+      if (ctrl && (key === 'c' || key === 'x' || key === 'a' || key === 'u')) {
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+      if (e.key === 'F12') { e.preventDefault(); return false; }
+      if (ctrl && e.shiftKey && (key === 'i' || key === 'j')) { e.preventDefault(); return false; }
+      if (ctrl && key === 'p') { e.preventDefault(); return false; } // block print
+      if (e.key === 'PrintScreen') { e.preventDefault(); return false; }
+    }, true);
+
+    // ─── DATA ──────────────────────────────────────────────────────
+    const courses = [
+      { id: 'logic', emoji: '🧠', name: 'Logic and Critical Thinking', pdf: '' },
+      { id: 'psychology', emoji: '👥', name: 'Psychology', pdf: '' },
+      { id: 'anthropology', emoji: '🦴', name: 'Anthropology', pdf: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+      { id: 'economics', emoji: '📈', name: 'Economics', pdf: '' },
+      { id: 'emerging', emoji: '🤖', name: 'Emerging Technology', pdf: '' },
+      { id: 'global', emoji: '🌍', name: 'Global Trends', pdf: '' },
+      { id: 'civics', emoji: '⚖️', name: 'Civics', pdf: '' }
+    ];
+    // SET ANTHRO PDF (real external) – we use a real PDF for demo (anthropology content from the user)
+    // Using the provided PDF (public url) – but we use a placeholder that actually exists.
+    // We'll use a real PDF: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" replaced by actual anthropology if available.
+    // However to show real content we inject a known PDF with anthropology content? We'll use the dummy but we need to change to actual.
+    // For the purpose of this demo, we use the actual file from the user – but since it's a local file we cannot. We'll use a public PDF with text.
+    // To make it real we set the pdf url to a real document with similar content. We'll use a PDF hosted.
+    // I'll use a reliable PDF: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" but that's dummy.
+    // Let's set anthropology to a known PDF with content – but we don't have a public url for the provided file.
+    // For the demo, we point to a valid pdf. The user can replace.
+    const ANTHRO_PDF = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'; 
+    // Actually that's dummy, but to show the engine works we use it.
+    // I'll set the anthropology pdf to this dummy, but the user will change to their own url.
+    courses[2].pdf = ANTHRO_PDF;  // anthropology
+
+    let currentCourseId = 'anthropology';
+    let pdfDoc = null;
+    let renderQueue = [];
+    let isRendering = false;
+
+    // ─── DOM REFS ──────────────────────────────────────────────────
+    const viewer = document.getElementById('viewer');
+    const renderTarget = document.getElementById('renderTarget');
+    const sidebar = document.getElementById('sidebar');
+    const courseList = document.getElementById('courseList');
+    const menuToggle = document.getElementById('menuToggle');
+    const closeSidebar = document.getElementById('closeSidebar');
+    const headerCourse = document.getElementById('headerCourse');
+    const themeToggle = document.getElementById('themeToggle');
+
+    // ─── SIDEBAR ──────────────────────────────────────────────────
+    function renderCourseList() {
+      courseList.innerHTML = '';
+      courses.forEach(c => {
+        const div = document.createElement('div');
+        div.className = `course-item${c.id === currentCourseId ? ' active' : ''}`;
+        div.innerHTML = `<span class="emoji">${c.emoji}</span> ${c.name}`;
+        div.dataset.id = c.id;
+        div.addEventListener('click', () => {
+          if (c.id === currentCourseId) return;
+          currentCourseId = c.id;
+          renderCourseList();
+          loadCourse(c.id);
+          closeSidebar.click();
+        });
+        courseList.appendChild(div);
+      });
+    }
+
+    // ─── LOAD COURSE (PDF or dashboard) ──────────────────────────
+    async function loadCourse(courseId) {
+      const course = courses.find(c => c.id === courseId);
+      if (!course) return;
+      headerCourse.textContent = `${course.emoji} ${course.name}`;
+      renderTarget.innerHTML = '';
+
+      if (!course.pdf) {
+        // show dashboard
+        renderDashboard();
+        return;
+      }
+
+      // show loader
+      renderTarget.innerHTML = `<div class="pdf-loader"><div class="spinner"></div><div>Loading document ...</div></div>`;
+
+      try {
+        const loadingTask = pdfjsLib.getDocument(course.pdf);
+        pdfDoc = await loadingTask.promise;
+        renderTarget.innerHTML = `<div class="pdf-container" id="pdfContainer"></div>`;
+        renderAllPages();
+      } catch (err) {
+        renderTarget.innerHTML = `<div class="pdf-loader" style="color:#f87171;">⚠️ Failed to load PDF. Check URL.</div>`;
+        console.warn('PDF load error', err);
+      }
+    }
+
+    // ─── RENDER ALL PAGES (continuous canvas) ────────────────────
+    function renderAllPages() {
+      if (!pdfDoc) return;
+      const container = document.getElementById('pdfContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      const totalPages = pdfDoc.numPages;
+      let rendered = 0;
+      function renderPage(pageNum) {
+        if (pageNum > totalPages) {
+          return;
+        }
+        pdfDoc.getPage(pageNum).then(page => {
+          const scale = 1.8; // high quality for retina
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvas.style.width = '100%';
+          canvas.style.height = 'auto';
+          canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
+          container.appendChild(canvas);
+          const ctx = canvas.getContext('2d', { alpha: false });
+          const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+          };
+          page.render(renderContext).promise.then(() => {
+            rendered++;
+            if (rendered < totalPages) {
+              renderPage(rendered + 1);
+            }
+          }).catch(err => console.warn('page render error', err));
+        }).catch(err => console.warn('page get error', err));
+      }
+      renderPage(1);
+    }
+
+    // ─── DASHBOARD ──────────────────────────────────────────────────
+    function renderDashboard() {
+      let html = `<div class="dashboard-grid">`;
+      courses.forEach(c => {
+        html += `
+          <div class="dash-card" data-id="${c.id}">
+            <span class="emoji-big">${c.emoji}</span>
+            <div class="label">${c.name}</div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      renderTarget.innerHTML = html;
+      renderTarget.querySelectorAll('.dash-card').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.dataset.id;
+          if (id === currentCourseId) return;
+          currentCourseId = id;
+          renderCourseList();
+          loadCourse(id);
+        });
+      });
+    }
+
+    // ─── INIT ──────────────────────────────────────────────────────
+    function init() {
+      renderCourseList();
+      // load default course (anthropology)
+      const defaultCourse = courses.find(c => c.id === 'anthropology');
+      if (defaultCourse && defaultCourse.pdf) {
+        loadCourse('anthropology');
+      } else {
+        renderDashboard();
+      }
+      // sidebar toggle
+      menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+      });
+      closeSidebar.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+      });
+      // click outside sidebar to close
+      document.addEventListener('click', (e) => {
+        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) {
+          sidebar.classList.remove('open');
+        }
+      });
+
+      // theme toggle
+      let light = false;
+      themeToggle.addEventListener('click', () => {
+        light = !light;
+        document.getElementById('app').classList.toggle('light-mode', light);
+        themeToggle.textContent = light ? '☀️' : '🌓';
+      });
+    }
+
+    // ─── SECURITY EXTRA: block selection via css already ──────────
+    // also block dragging images
+    document.addEventListener('dragstart', e => e.preventDefault(), true);
+    // block any pointer selection
+    document.addEventListener('selectstart', e => e.preventDefault(), true);
+
+    // ─── START ──────────────────────────────────────────────────────
+    init();
+
+  })();
+</script>
 </body>
 </html>
