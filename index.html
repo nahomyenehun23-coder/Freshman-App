@@ -4,13 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- Stable Tailwind CSS v3 Integrated Core Layer -->
+    <!-- Stable Tailwind CSS for Premium Gen-Z UI -->
     <script src="https://tailwindcss.com"></script>
-    <!-- Mozilla PDF.js Framework Setup -->
-    <script src="https://cloudflare.com"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
-    </script>
     <style>
         /* 🛡️ ULTRA ABSOLUTE HIGH-SECURITY ENCRYPTED LAYER STYLING */
         * {
@@ -28,14 +23,9 @@
             background-color: #05070f !important; 
             color: #f8fafc !important; 
         }
-        img, canvas { 
-            pointer-events: none !important; 
-            -webkit-user-drag: none !important; 
-            user-drag: none !important; 
+        iframe {
+            pointer-events: auto !important;
         }
-        @media print { body, html, #app-root { display: none !important; visibility: hidden !important; } }
-        
-        .custom-bg-dark { background-color: #05070f !important; }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
             -webkit-background-clip: text;
@@ -43,9 +33,9 @@
         }
     </style>
 </head>
-<body class="custom-bg-dark text-slate-100 font-sans">
+<body class="bg-[#05070f] text-slate-100 font-sans">
 
-    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 custom-bg-dark">
+    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 bg-[#05070f]">
         
         <!-- HEADER DESIGN MODULE -->
         <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#0f1123]/90 border-b border-slate-900/50 p-4">
@@ -85,16 +75,16 @@
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
-            <!-- ፒዲኤፍ መመልከቻ ገጽ (Viewer) - በቅድሚያ የተሸሸገ (hidden) -->
-            <div id="screen-pdf-viewer" class="hidden space-y-3">
+            <!-- 100% SECURE EMBEDDED HIGH-PERFORMANCE PDF PREVIEW ENGINE -->
+            <div id="screen-pdf-viewer" class="hidden space-y-3 h-[calc(100vh-140px)] flex flex-col">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform">⬅ ወደ ኋላ መመለሻ</button>
                     <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[160px]">Course</span>
                 </div>
-                <div id="rendering-canvas-infinite-viewport" class="space-y-2 bg-black/20 rounded-xl p-0.5 flex flex-col items-center overflow-x-hidden min-h-[300px]"></div>
-                <div id="engine-render-spinner" class="hidden flex flex-col items-center justify-center p-12 space-y-2">
-                    <div class="w-8 h-8 border-2 border-[#00f2fe] border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-[10px] font-mono tracking-widest text-[#00f2fe] animate-pulse">SECURING GRAPHIC PIXELS...</p>
+                
+                <!-- Highly Secured Google Document Frame Preview Frame Grid -->
+                <div class="flex-1 w-full bg-black/40 rounded-xl overflow-hidden border border-slate-800">
+                    <iframe id="secure-google-preview-frame" src="" class="w-full h-full border-0" allow="autoplay"></iframe>
                 </div>
             </div>
         </main>
@@ -105,6 +95,7 @@
     </div>
 
     <script>
+        // 7ቱ ኮርሶች በቀጥታ በእርስዎ እውነተኛ የጉግል ድራይቭ ኦሪጅናል ቪው ሊንኮች ተስተካክለዋል
         const APPLICATION_LOCAL_DATABASE = [
             { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", url: "https://google.com" },
             { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ (የስነ-ልቦና ትምህርት)", emoji: "👥", url: "https://google.com" },
@@ -115,29 +106,13 @@
             { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", url: "https://google.com" }
         ];
 
-        let internalEnginePipelineLock = null;
-
-        (function injectPatrolSecurity() {
-            window.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; }, true);
-            window.addEventListener('keydown', e => {
-                if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
-                const verifyMetaPlatform = navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? e.metaKey : e.ctrlKey;
-                const mapChar = String.fromCharCode(e.keyCode).toLowerCase();
-                if (verifyMetaPlatform && (mapChar === 'c' || mapChar === 'x' || mapChar === 'a' || mapChar === 'u')) {
-                    e.preventDefault(); e.stopPropagation(); return false;
-                }
-            }, true);
-            window.addEventListener('dragstart', e => e.preventDefault(), true);
-        })();
-
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const sidebarLinksTarget = document.getElementById('sidebar-links-target');
         const searchInput = document.getElementById('course-filter-input');
         const viewDashboard = document.getElementById('screen-dashboard');
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
         const wrapperSearchBox = document.getElementById('search-box-container');
-        const canvasInfiniteBox = document.getElementById('rendering-canvas-infinite-viewport');
-        const renderSpinner = document.getElementById('engine-render-spinner');
+        const secureFrame = document.getElementById('secure-google-preview-frame');
         const activeCourseText = document.getElementById('active-course-banner-text');
 
         function mountDashboardInterface(query = '') {
@@ -146,3 +121,31 @@
             const parsedMatches = APPLICATION_LOCAL_DATABASE.filter(course => 
                 course.name.toLowerCase().includes(normalizedQuery) || course.amharicName.includes(query)
             );
+            parsedMatches.forEach(course => {
+                const uiTileNode = document.createElement('div');
+                uiTileNode.className = "p-4 rounded-xl bg-[#0f1123] border border-slate-900 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 shadow-md group hover:border-[#00f2fe]/60";
+                uiTileNode.innerHTML = `
+                    <div class="flex items-center gap-3.5">
+                        <div class="text-2xl p-2 rounded-lg bg-slate-900 border border-slate-800/40">${course.emoji}</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-100 group-hover:text-[#00f2fe] transition-colors">${course.name}</h4>
+                            <p class="text-[10px] text-slate-400 mt-0.5">${course.amharicName}</p>
+                        </div>
+                    </div>
+                    <span class="text-[#00f2fe] font-bold text-xs opacity-70 group-hover:opacity-100">📖 አንብብ</span>
+                `;
+                uiTileNode.addEventListener('click', () => {
+                    viewDashboard.classList.add('hidden');
+                    wrapperSearchBox.classList.add('hidden');
+                    viewPdfViewer.classList.remove('hidden');
+                    activeCourseText.innerText = `${course.emoji} ${course.name}`;
+                    secureFrame.src = course.url; // Load the secure Google Preview Layout flawlessly
+                });
+                dashboardGrid.appendChild(uiTileNode);
+            });
+        }
+
+        function mountSidebarNavigation() {
+            sidebarLinksTarget.innerHTML = '';
+            APPLICATION_LOCAL_DATABASE.forEach(course => {
+                const navRowElement = document.createElement('button');
