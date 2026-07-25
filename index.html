@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
             -webkit-user-select: none !important;
@@ -27,7 +28,7 @@
             background-color: #05070f !important;
             color: #f8fafc !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            touch-action: pan-x pan-y !important;
+            touch-action: none !important;
         }
         .text-gradient {
             background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
@@ -41,26 +42,16 @@
             -webkit-backdrop-filter: blur(20px);
         }
         ::-webkit-scrollbar {
-            width: 3px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f1123;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #6366f1;
-            border-radius: 10px;
+            width: 0px;
+            height: 0px;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
         @keyframes slideIn {
             from { opacity: 0; transform: translateX(30px); }
             to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes slideOut {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(-30px); }
         }
         .course-card {
             animation: slideIn 0.3s ease-out;
@@ -82,57 +73,68 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* PDF Viewer Container - Full Touch Support */
-        #pdf-viewer-container {
+        /* PDF Canvas Container - Full Touch Support */
+        #pdf-canvas-container {
             background: #0a0c1a;
             overflow: hidden;
             height: 100%;
             width: 100%;
             position: relative;
-            touch-action: pan-x pan-y pinch-zoom !important;
+            touch-action: none !important;
             -webkit-overflow-scrolling: touch;
         }
         
-        /* PDF Iframe - Touch Enabled */
-        #pdf-iframe {
+        #pdf-canvas-container canvas {
+            display: block;
+            margin: 0 auto;
             width: 100%;
-            height: 100%;
-            border: none;
-            background: #0a0c1a;
-            touch-action: pan-x pan-y pinch-zoom !important;
-            -webkit-overflow-scrolling: touch;
-            transition: transform 0.1s ease-out;
+            height: auto;
+            touch-action: none !important;
+            transition: transform 0.05s ease-out;
         }
         
-        /* Scroll Button */
-        .scroll-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 999;
-            background: rgba(99, 102, 241, 0.9);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            font-size: 18px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: none;
+        /* PDF Controls - Minimal */
+        .pdf-controls {
+            display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: rgba(15, 17, 35, 0.95);
+            border-bottom: 1px solid #1e293b;
+            flex-wrap: wrap;
+            flex-shrink: 0;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+        }
+        .pdf-controls button {
+            padding: 6px 12px;
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.8);
+            color: #f8fafc;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.2s;
+            min-height: 32px;
             touch-action: manipulation;
+            cursor: pointer;
         }
-        .scroll-btn:active {
-            transform: scale(0.85);
+        .pdf-controls button:active {
+            transform: scale(0.9);
+            background: rgba(99, 102, 241, 0.3);
         }
-        .scroll-btn.show {
-            display: flex;
-            animation: fadeIn 0.3s ease-out;
+        .pdf-controls span {
+            color: #94a3b8;
+            font-size: 10px;
+            padding: 0 4px;
+        }
+        .pdf-controls .page-info {
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
         }
         
         /* Fullscreen Mode */
@@ -159,17 +161,10 @@
             max-height: 100% !important;
             animation: fadeIn 0.3s ease-out;
         }
-        .fullscreen-mode #screen-pdf-viewer > div:first-child {
-            display: none !important;
-        }
-        .fullscreen-mode #pdf-viewer-container {
+        .fullscreen-mode #pdf-canvas-container {
             border-radius: 0 !important;
             border: none !important;
             height: 100% !important;
-        }
-        .fullscreen-mode .scroll-btn {
-            bottom: 30px;
-            right: 30px;
         }
         
         /* Exit Fullscreen Button */
@@ -210,63 +205,28 @@
             padding: 12px;
             padding-bottom: 80px;
             -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-        }
-        
-        /* Zoom Controls - Touch Friendly */
-        .pdf-controls {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 6px 10px;
-            background: rgba(15, 17, 35, 0.95);
-            border-bottom: 1px solid #1e293b;
-            flex-wrap: wrap;
-            flex-shrink: 0;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-        .pdf-controls button {
-            padding: 6px 12px;
-            border-radius: 10px;
-            background: rgba(30, 41, 59, 0.8);
-            color: #f8fafc;
-            border: 1px solid rgba(51, 65, 85, 0.5);
-            font-size: 11px;
-            font-weight: bold;
-            transition: all 0.2s;
-            min-height: 32px;
-            touch-action: manipulation;
-            cursor: pointer;
-        }
-        .pdf-controls button:active {
-            transform: scale(0.9);
-            background: rgba(99, 102, 241, 0.3);
-        }
-        .pdf-controls span {
-            color: #94a3b8;
-            font-size: 10px;
-            padding: 0 4px;
         }
         
         /* Gesture Indicator */
         .gesture-indicator {
             position: fixed;
-            bottom: 80px;
+            bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.7);
             color: white;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 10px;
+            padding: 8px 18px;
+            border-radius: 25px;
+            font-size: 11px;
             opacity: 0;
             transition: opacity 0.5s;
             pointer-events: none;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            max-width: 80%;
         }
         .gesture-indicator.show {
             opacity: 1;
@@ -278,13 +238,6 @@
                 font-size: 10px;
                 padding: 4px 10px;
                 min-height: 28px;
-            }
-            .scroll-btn {
-                width: 38px;
-                height: 38px;
-                font-size: 16px;
-                bottom: 15px;
-                right: 15px;
             }
             .exit-fullscreen-btn {
                 padding: 8px 12px;
@@ -301,7 +254,7 @@
         
         <!-- HEADER -->
         <header class="sticky top-0 z-40 glass-effect border-b border-slate-900/50 p-3 safe-top flex-shrink-0">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <button id="sidebar-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 active:scale-95 transition-all touch-manipulation">
                         <svg class="w-5 h-5 text-[#00f2fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,14 +263,11 @@
                     </button>
                     <h1 class="text-base font-black text-gradient tracking-tight">FreshmanHub</h1>
                 </div>
-                <button id="theme-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-sm active:scale-95 touch-manipulation">
-                    🌙
-                </button>
-            </div>
-            <div id="search-box-container" class="relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 text-xs">🔍</span>
-                <input type="text" id="course-filter-input" placeholder="ኮርሶችን ይፍለጉ (Search courses...)" 
-                       class="w-full pl-8 pr-3 py-1.5 bg-[#05070f] border border-slate-800 rounded-lg focus:border-[#00f2fe] text-xs font-medium transition-all text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#00f2fe]/50">
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle-btn" class="p-1.5 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-sm active:scale-95 touch-manipulation">
+                        🌙
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -335,14 +285,14 @@
         <main class="flex-1 relative overflow-hidden">
             <!-- Dashboard -->
             <div id="screen-dashboard" class="dashboard-container">
-                <div class="p-3 rounded-xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5 mb-3 animate-fadeIn">
+                <div class="p-3 rounded-xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5 mb-3">
                     <h2 class="text-xs font-bold text-white">ሰላም ለእናንተ ይሁን 👋</h2>
                     <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">ለዩኒቨርሲቲ አንደኛ አመት ተማሪዎች የተዘጋጁ የትምህርት ማጠቃለያዎች።</p>
                 </div>
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-2"></div>
             </div>
 
-            <!-- PDF VIEWER - Full Touch Support -->
+            <!-- PDF VIEWER - Canvas with Full Touch Support -->
             <div id="screen-pdf-viewer" class="hidden flex flex-col h-full w-full bg-[#0a0c1a]">
                 <div class="flex items-center justify-between bg-[#0f1123] p-2 border-b border-slate-900 flex-shrink-0">
                     <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-all touch-manipulation">
@@ -354,12 +304,14 @@
                     </button>
                 </div>
                 
-                <!-- Touch Controls -->
+                <!-- PDF Controls -->
                 <div class="pdf-controls">
+                    <button id="prev-page-btn">◀</button>
+                    <span class="page-info" id="page-info">ገጽ 1 / 1</span>
+                    <button id="next-page-btn">▶</button>
                     <button id="zoom-in-btn">🔍+</button>
                     <button id="zoom-out-btn">🔍−</button>
                     <button id="reset-zoom-btn">⟲</button>
-                    <span id="view-status">🔒 ተጠብቋል</span>
                     <span id="zoom-level" class="text-[9px] text-slate-500">100%</span>
                 </div>
 
@@ -368,26 +320,17 @@
                     <div class="text-center">
                         <div class="loader mx-auto mb-3"></div>
                         <p class="text-slate-400 text-xs">⏳ እየተከፈተ ነው...</p>
-                        <p class="text-slate-600 text-[9px] mt-1">👆 ወደ ላይ/ታች ይሸብልሉ</p>
+                        <p class="text-slate-600 text-[9px] mt-1">👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)</p>
                     </div>
                 </div>
 
-                <!-- PDF Viewer Container - Touch Enabled -->
-                <div id="pdf-viewer-container" class="flex-1 bg-[#0a0c1a] relative overflow-hidden">
-                    <iframe id="pdf-iframe" src="" class="w-full h-full" allow="autoplay" loading="eager" 
-                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups">
-                    </iframe>
-                    <div id="drive-blocker" class="absolute inset-0 z-10 pointer-events-none"></div>
-                </div>
+                <!-- PDF Canvas Container -->
+                <div id="pdf-canvas-container" class="flex-1 bg-[#0a0c1a] relative overflow-hidden"></div>
             </div>
         </main>
 
-        <!-- SCROLL BUTTONS -->
-        <button id="scroll-top-btn" class="scroll-btn" aria-label="Scroll to top">↑</button>
-        <button id="scroll-bottom-btn" class="scroll-btn" style="bottom: 80px;" aria-label="Scroll to bottom">↓</button>
-
         <!-- GESTURE INDICATOR -->
-        <div id="gesture-indicator" class="gesture-indicator">👆 ይሸብልሉ / ያስፉ</div>
+        <div id="gesture-indicator" class="gesture-indicator">👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)</div>
 
         <!-- EXIT FULLSCREEN BUTTON -->
         <button id="exit-fullscreen-btn" class="exit-fullscreen-btn">
@@ -400,6 +343,11 @@
     </div>
 
     <script>
+        // ============================================
+        // PDF.js Configuration
+        // ============================================
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
         // ============================================
         // PREVENT SCREEN DIMMING
         // ============================================
@@ -417,13 +365,13 @@
         // COURSE DATA
         // ============================================
         const APPLICATION_LOCAL_DATABASE = [
-            { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", url: "https://drive.google.com/file/d/1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp/preview" },
-            { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ", emoji: "👥", url: "https://drive.google.com/file/d/1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p/preview" },
-            { id: "anthropology", name: "Anthropology", amharicName: "አንትሮፖሎጂ", emoji: "🦴", url: "https://drive.google.com/file/d/1h8sNuyWE2ANft8JF7e4LugefEFSeBga8/preview" },
-            { id: "economics", name: "Economics", amharicName: "ኢኮኖሚክስ", emoji: "📈", url: "https://drive.google.com/file/d/1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL/preview" },
-            { id: "emerging_tech", name: "Emerging Technology", amharicName: "ኤመርጂንግ ቴክኖሎጂ", emoji: "🤖", url: "https://drive.google.com/file/d/1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w/preview" },
-            { id: "global_trends", name: "Global Trends", amharicName: "ግሎባል ትሬንድስ", emoji: "🌍", url: "https://drive.google.com/file/d/15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-/preview" },
-            { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", url: "https://drive.google.com/file/d/1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx/preview" }
+            { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", fileId: "1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp" },
+            { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ", emoji: "👥", fileId: "1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p" },
+            { id: "anthropology", name: "Anthropology", amharicName: "አንትሮፖሎጂ", emoji: "🦴", fileId: "1h8sNuyWE2ANft8JF7e4LugefEFSeBga8" },
+            { id: "economics", name: "Economics", amharicName: "ኢኮኖሚክስ", emoji: "📈", fileId: "1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL" },
+            { id: "emerging_tech", name: "Emerging Technology", amharicName: "ኤመርጂንግ ቴክኖሎጂ", emoji: "🤖", fileId: "1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w" },
+            { id: "global_trends", name: "Global Trends", amharicName: "ግሎባል ትሬንድስ", emoji: "🌍", fileId: "15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-" },
+            { id: "civics", name: "Civics", amharicName: "ሲቪክስና ስነ-ዜጋ", emoji: "⚖️", fileId: "1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx" }
         ];
 
         // ============================================
@@ -431,18 +379,13 @@
         // ============================================
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const sidebarLinksTarget = document.getElementById('sidebar-links-target');
-        const searchInput = document.getElementById('course-filter-input');
         const viewDashboard = document.getElementById('screen-dashboard');
         const viewPdfViewer = document.getElementById('screen-pdf-viewer');
         const activeCourseText = document.getElementById('active-course-banner-text');
         const pdfLoader = document.getElementById('pdf-loader');
-        const pdfIframe = document.getElementById('pdf-iframe');
-        const viewerContainer = document.getElementById('pdf-viewer-container');
-        const driveBlocker = document.getElementById('drive-blocker');
-        const viewStatus = document.getElementById('view-status');
+        const canvasContainer = document.getElementById('pdf-canvas-container');
+        const pageInfo = document.getElementById('page-info');
         const zoomLevel = document.getElementById('zoom-level');
-        const scrollTopBtn = document.getElementById('scroll-top-btn');
-        const scrollBottomBtn = document.getElementById('scroll-bottom-btn');
         const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
         const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
         const gestureIndicator = document.getElementById('gesture-indicator');
@@ -450,78 +393,303 @@
         // ============================================
         // STATE
         // ============================================
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let currentScale = 1.2;
         let currentCourse = null;
-        let currentZoom = 1;
         let isFullscreen = false;
         let pdfLoaded = false;
+        
+        // Touch state
         let touchStartX = 0;
         let touchStartY = 0;
-        let touchStartZoom = 1;
-        let lastTouchDistance = 0;
+        let initialPinchDistance = 0;
+        let initialZoom = 1;
+        let isPinching = false;
+        let isSwiping = false;
+        let lastTouchY = 0;
 
         // ============================================
-        // PRELOAD PDF
+        // GET GOOGLE DRIVE PDF URL
         // ============================================
-        function preloadPdf(url) {
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'document';
-            link.href = url;
-            document.head.appendChild(link);
-            
-            const preconnect = document.createElement('link');
-            preconnect.rel = 'preconnect';
-            preconnect.href = 'https://drive.google.com';
-            document.head.appendChild(preconnect);
+        function getGoogleDrivePdfUrl(fileId) {
+            return `https://drive.google.com/uc?export=download&id=${fileId}`;
         }
-        APPLICATION_LOCAL_DATABASE.forEach(course => preloadPdf(course.url));
 
         // ============================================
-        // OPEN COURSE VIEWER
+        // RENDER PDF PAGE TO CANVAS
         // ============================================
-        function openCourseViewer(course) {
-            currentCourse = course;
-            pdfLoaded = false;
+        function renderPage(pageNum, scale = currentScale) {
+            if (!pdfDoc) return;
+
+            // Remove existing canvas
+            const existingCanvas = canvasContainer.querySelector('canvas');
+            if (existingCanvas) {
+                existingCanvas.remove();
+            }
+
+            // Create new canvas
+            const canvas = document.createElement('canvas');
+            canvasContainer.appendChild(canvas);
+            canvas.style.touchAction = 'none';
             
-            viewDashboard.classList.add('hidden');
-            viewPdfViewer.classList.remove('hidden');
-            activeCourseText.innerText = `${course.emoji} ${course.name}`;
+            pdfDoc.getPage(pageNum).then(page => {
+                const viewport = page.getViewport({ scale: scale });
+                const context = canvas.getContext('2d');
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+                canvas.style.transform = 'scale(1)';
+                canvas.style.transformOrigin = 'top left';
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                
+                return page.render(renderContext).promise;
+            }).then(() => {
+                console.log(`✅ Page ${pageNum} rendered`);
+                pageInfo.textContent = `ገጽ ${pageNum} / ${totalPages}`;
+            }).catch(err => {
+                console.error('❌ Render error:', err);
+            });
+        }
+
+        // ============================================
+        // LOAD PDF
+        // ============================================
+        function loadPdfFromDrive(fileId) {
+            const url = getGoogleDrivePdfUrl(fileId);
             
-            pdfLoader.classList.remove('hidden');
-            pdfIframe.style.display = 'none';
-            
-            currentZoom = 1;
-            pdfIframe.style.transform = 'scale(1)';
-            pdfIframe.style.transformOrigin = 'top left';
-            zoomLevel.textContent = '100%';
-            
-            // Load PDF
-            pdfIframe.src = course.url;
-            
-            pdfIframe.onload = function() {
-                pdfLoaded = true;
+            pdfjsLib.getDocument(url).promise.then(pdf => {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                pageInfo.textContent = `ገጽ 1 / ${totalPages}`;
+                
                 pdfLoader.classList.add('hidden');
-                pdfIframe.style.display = 'block';
                 
-                setTimeout(() => {
-                    driveBlocker.classList.add('pointer-events-auto');
-                }, 500);
+                // Render all pages one by one
+                renderPage(1);
+                pdfLoaded = true;
                 
-                viewStatus.textContent = '🔒 ተጠብቋል';
-                scrollTopBtn.classList.add('show');
-                scrollBottomBtn.classList.add('show');
+                console.log(`✅ PDF loaded: ${totalPages} pages`);
+                showGestureIndicator('👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)');
+            }).catch(err => {
+                console.error('❌ Error loading PDF:', err);
+                pdfLoader.classList.remove('hidden');
+                pdfLoader.innerHTML = `
+                    <div class="text-center p-6">
+                        <div class="text-5xl mb-4">⚠️</div>
+                        <p class="text-red-400 text-sm font-bold">ፒዲኤፍ መክፈት አልተቻለም</p>
+                        <p class="text-slate-500 text-xs mt-2">${err.message || 'Failed to load PDF'}</p>
+                        <div class="mt-4">
+                            <button onclick="retryLoadPdf()" class="bg-[#6366f1] text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-all">
+                                🔄 እንደገና ሞክር
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // ============================================
+        // RETRY LOAD
+        // ============================================
+        function retryLoadPdf() {
+            if (!currentCourse) return;
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-3"></div>
+                    <p class="text-slate-400 text-xs">⏳ እንደገና እየሞከረ...</p>
+                </div>
+            `;
+            canvasContainer.innerHTML = '';
+            loadPdfFromDrive(currentCourse.fileId);
+        }
+        window.retryLoadPdf = retryLoadPdf;
+
+        // ============================================
+        // NAVIGATION FUNCTIONS
+        // ============================================
+        function prevPage() {
+            if (currentPage <= 1 || !pdfDoc) return;
+            currentPage--;
+            renderPage(currentPage);
+        }
+
+        function nextPage() {
+            if (currentPage >= totalPages || !pdfDoc) return;
+            currentPage++;
+            renderPage(currentPage);
+        }
+
+        function updateZoom(scale) {
+            currentScale = Math.min(Math.max(scale, 0.5), 3);
+            const canvas = canvasContainer.querySelector('canvas');
+            if (canvas) {
+                canvas.style.transform = `scale(${currentScale})`;
+                canvas.style.transformOrigin = 'top left';
+            }
+            zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
+        }
+
+        function zoomIn() {
+            updateZoom(currentScale + 0.1);
+        }
+
+        function zoomOut() {
+            updateZoom(currentScale - 0.1);
+        }
+
+        function resetZoom() {
+            updateZoom(1.2);
+        }
+
+        // ============================================
+        // TOUCH GESTURES - Pinch & Swipe with 2 fingers
+        // ============================================
+        function setupTouchGestures() {
+            let initialPinchDistance = 0;
+            let initialZoom = 1;
+            let isPinching = false;
+            let touchCount = 0;
+
+            canvasContainer.addEventListener('touchstart', function(e) {
+                touchCount = e.touches.length;
                 
-                // Show gesture indicator
-                showGestureIndicator('👆 ይሸብልሉ / ያስፉ');
-            };
-            
-            setTimeout(() => {
-                if (!pdfLoaded) {
-                    pdfLoader.classList.add('hidden');
-                    pdfIframe.style.display = 'block';
-                    driveBlocker.classList.add('pointer-events-auto');
+                if (e.touches.length === 2) {
+                    // Two fingers - Pinch or Swipe
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    initialPinchDistance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+                    initialZoom = currentScale;
+                    isPinching = true;
+                    isSwiping = false;
+                    lastTouchY = (touch1.clientY + touch2.clientY) / 2;
+                    showGestureIndicator('🤏 ያስፉ / ⬆⬇ ይሸብልሉ');
+                } else if (e.touches.length === 1) {
+                    // One finger - Single tap for page navigation
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    isSwiping = false;
+                    isPinching = false;
                 }
-            }, 3000);
+            }, { passive: true });
+
+            canvasContainer.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    
+                    // Check if it's a pinch or swipe
+                    const currentDistance = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+                    
+                    const currentMidY = (touch1.clientY + touch2.clientY) / 2;
+                    const deltaY = currentMidY - lastTouchY;
+                    
+                    // If distance changed significantly, it's a pinch
+                    const distanceDiff = Math.abs(currentDistance - initialPinchDistance);
+                    
+                    if (distanceDiff > 10) {
+                        // Pinch gesture
+                        const scale = currentDistance / initialPinchDistance;
+                        const newZoom = Math.min(Math.max(initialZoom * scale, 0.5), 3);
+                        currentScale = newZoom;
+                        const canvas = canvasContainer.querySelector('canvas');
+                        if (canvas) {
+                            canvas.style.transform = `scale(${newZoom})`;
+                            canvas.style.transformOrigin = 'top left';
+                        }
+                        zoomLevel.textContent = `${Math.round(newZoom * 100)}%`;
+                        isPinching = true;
+                        isSwiping = false;
+                    } else if (Math.abs(deltaY) > 20) {
+                        // Swipe gesture - Scroll through pages
+                        isSwiping = true;
+                        isPinching = false;
+                        
+                        if (deltaY < -20 && currentPage < totalPages) {
+                            // Swipe up - Next page
+                            nextPage();
+                            showGestureIndicator(`⬆ ገጽ ${currentPage + 1}`);
+                            lastTouchY = currentMidY;
+                            // Reset to prevent multiple triggers
+                            setTimeout(() => {
+                                isSwiping = false;
+                            }, 300);
+                        } else if (deltaY > 20 && currentPage > 1) {
+                            // Swipe down - Previous page
+                            prevPage();
+                            showGestureIndicator(`⬇ ገጽ ${currentPage - 1}`);
+                            lastTouchY = currentMidY;
+                            setTimeout(() => {
+                                isSwiping = false;
+                            }, 300);
+                        }
+                    }
+                } else if (e.touches.length === 1) {
+                    // Single finger tap
+                    const currentX = e.touches[0].clientX;
+                    const currentY = e.touches[0].clientY;
+                    const deltaX = currentX - touchStartX;
+                    const deltaY = currentY - touchStartY;
+                    
+                    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                        if (deltaX < -50) {
+                            // Swipe left - Next page
+                            nextPage();
+                            showGestureIndicator(`⬅ ገጽ ${currentPage}`);
+                        } else if (deltaX > 50) {
+                            // Swipe right - Previous page
+                            prevPage();
+                            showGestureIndicator(`➡ ገጽ ${currentPage}`);
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            canvasContainer.addEventListener('touchend', function(e) {
+                if (isPinching) {
+                    isPinching = false;
+                    setTimeout(() => {
+                        gestureIndicator.classList.remove('show');
+                    }, 1000);
+                }
+                if (isSwiping) {
+                    isSwiping = false;
+                }
+            }, { passive: true });
+
+            // Double tap to reset zoom
+            let lastTapTime = 0;
+            canvasContainer.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1) {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTapTime;
+                    if (tapLength < 300 && tapLength > 0) {
+                        // Double tap detected
+                        if (currentScale !== 1.2) {
+                            resetZoom();
+                            showGestureIndicator('⟲ ወደ መደበኛ ተመለሰ');
+                        }
+                        e.preventDefault();
+                    }
+                    lastTapTime = currentTime;
+                }
+            }, { passive: false });
         }
 
         // ============================================
@@ -530,114 +698,10 @@
         function showGestureIndicator(text) {
             gestureIndicator.textContent = text;
             gestureIndicator.classList.add('show');
-            setTimeout(() => {
+            clearTimeout(window.gestureTimeout);
+            window.gestureTimeout = setTimeout(() => {
                 gestureIndicator.classList.remove('show');
-            }, 3000);
-        }
-
-        // ============================================
-        // ZOOM FUNCTIONS
-        // ============================================
-        function updateZoom(scale) {
-            currentZoom = Math.min(Math.max(scale, 0.5), 3);
-            pdfIframe.style.transform = `scale(${currentZoom})`;
-            pdfIframe.style.transformOrigin = 'top left';
-            zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
-            viewStatus.textContent = `🔍 ${Math.round(currentZoom * 100)}%`;
-        }
-
-        function zoomIn() {
-            updateZoom(currentZoom + 0.1);
-        }
-
-        function zoomOut() {
-            updateZoom(currentZoom - 0.1);
-        }
-
-        function resetZoom() {
-            updateZoom(1);
-            viewStatus.textContent = '🔒 ተጠብቋል';
-        }
-
-        // ============================================
-        // TOUCH GESTURES - Pinch to Zoom & Swipe
-        // ============================================
-        function setupTouchGestures() {
-            let initialPinchDistance = 0;
-            let initialZoom = 1;
-            let isPinching = false;
-            
-            viewerContainer.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 2) {
-                    // Pinch start
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    initialPinchDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    initialZoom = currentZoom;
-                    isPinching = true;
-                    showGestureIndicator('🤏 ያስፉ (Pinch to zoom)');
-                } else if (e.touches.length === 1) {
-                    touchStartX = e.touches[0].clientX;
-                    touchStartY = e.touches[0].clientY;
-                }
-            }, { passive: true });
-
-            viewerContainer.addEventListener('touchmove', function(e) {
-                if (e.touches.length === 2 && isPinching) {
-                    e.preventDefault();
-                    
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const currentDistance = Math.hypot(
-                        touch1.clientX - touch2.clientX,
-                        touch1.clientY - touch2.clientY
-                    );
-                    
-                    const scale = currentDistance / initialPinchDistance;
-                    const newZoom = Math.min(Math.max(initialZoom * scale, 0.5), 3);
-                    
-                    pdfIframe.style.transform = `scale(${newZoom})`;
-                    pdfIframe.style.transformOrigin = 'top left';
-                    currentZoom = newZoom;
-                    zoomLevel.textContent = `${Math.round(newZoom * 100)}%`;
-                    
-                    viewStatus.textContent = `🔍 ${Math.round(newZoom * 100)}%`;
-                }
-            }, { passive: false });
-
-            viewerContainer.addEventListener('touchend', function(e) {
-                if (isPinching) {
-                    isPinching = false;
-                    // Show zoom level after pinch
-                    setTimeout(() => {
-                        viewStatus.textContent = currentZoom === 1 ? '🔒 ተጠብቋል' : `🔍 ${Math.round(currentZoom * 100)}%`;
-                    }, 500);
-                }
-            }, { passive: true });
-
-            // Double tap to reset zoom
-            let lastTapTime = 0;
-            viewerContainer.addEventListener('touchstart', function(e) {
-                if (e.touches.length === 1) {
-                    const currentTime = new Date().getTime();
-                    const tapLength = currentTime - lastTapTime;
-                    if (tapLength < 300 && tapLength > 0) {
-                        // Double tap detected
-                        if (currentZoom !== 1) {
-                            resetZoom();
-                            showGestureIndicator('⟲ ወደ መደበኛ ተመለሰ');
-                        } else {
-                            zoomIn();
-                            showGestureIndicator('🔍 አስፋ (Zoom in)');
-                        }
-                        e.preventDefault();
-                    }
-                    lastTapTime = currentTime;
-                }
-            }, { passive: false });
+            }, 2000);
         }
 
         // ============================================
@@ -650,57 +714,51 @@
                 document.body.classList.add('fullscreen-mode');
                 exitFullscreenBtn.classList.add('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ';
-                scrollTopBtn.classList.remove('show');
-                scrollBottomBtn.classList.remove('show');
-                showGestureIndicator('⛶ ሙሉ ማያ ሁነታ');
+                showGestureIndicator('⛶ ሙሉ ማያ');
             } else {
                 document.body.classList.remove('fullscreen-mode');
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
-                if (pdfLoaded) {
-                    scrollTopBtn.classList.add('show');
-                    scrollBottomBtn.classList.add('show');
-                }
             }
         }
 
         // ============================================
-        // SCROLL FUNCTIONS
+        // OPEN COURSE VIEWER
         // ============================================
-        function scrollToTop() {
-            const container = document.querySelector('.dashboard-container') || document.body;
-            container.scrollTo({ top: 0, behavior: 'smooth' });
-            showGestureIndicator('⬆ ወደ ላይ');
-        }
-
-        function scrollToBottom() {
-            const container = document.querySelector('.dashboard-container') || document.body;
-            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            showGestureIndicator('⬇ ወደ ታች');
+        function openCourseViewer(course) {
+            currentCourse = course;
+            pdfLoaded = false;
+            currentPage = 1;
+            
+            viewDashboard.classList.add('hidden');
+            viewPdfViewer.classList.remove('hidden');
+            activeCourseText.innerText = `${course.emoji} ${course.name}`;
+            
+            canvasContainer.innerHTML = '';
+            
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-3"></div>
+                    <p class="text-slate-400 text-xs">⏳ እየተከፈተ ነው...</p>
+                    <p class="text-slate-600 text-[9px] mt-1">👆 2 ጣቶች ይጠቀሙ (Use 2 fingers)</p>
+                </div>
+            `;
+            
+            // Reset zoom
+            currentScale = 1.2;
+            zoomLevel.textContent = '100%';
+            
+            loadPdfFromDrive(course.fileId);
         }
 
         // ============================================
         // DASHBOARD MOUNT
         // ============================================
-        function mountDashboardInterface(query = '') {
+        function mountDashboardInterface() {
             dashboardGrid.innerHTML = '';
-            const normalizedQuery = query.toLowerCase().trim();
             
-            const filteredCourses = APPLICATION_LOCAL_DATABASE.filter(course => 
-                course.name.toLowerCase().includes(normalizedQuery) || 
-                course.amharicName.includes(normalizedQuery)
-            );
-
-            if (filteredCourses.length === 0) {
-                dashboardGrid.innerHTML = `
-                    <div class="p-6 text-center rounded-xl bg-[#0f1123] border border-slate-900">
-                        <p class="text-slate-400 text-xs">😕 ምንም ኮርስ አልተገኘም</p>
-                    </div>
-                `;
-                return;
-            }
-
-            filteredCourses.forEach((course, index) => {
+            APPLICATION_LOCAL_DATABASE.forEach((course, index) => {
                 const uiTileNode = document.createElement('div');
                 uiTileNode.className = `course-card p-3 rounded-xl bg-[#0f1123] border border-slate-900 flex items-center justify-between cursor-pointer active:scale-[0.95] transition-all duration-200 shadow-md group hover:border-[#00f2fe]/60`;
                 uiTileNode.style.animationDelay = `${index * 0.05}s`;
@@ -808,10 +866,6 @@
         // EVENT LISTENERS
         // ============================================
         function setupEventListeners() {
-            searchInput.addEventListener('input', (e) => {
-                mountDashboardInterface(e.target.value);
-            });
-
             document.getElementById('sidebar-toggle-btn').addEventListener('click', () => toggleSidebar(true));
             document.getElementById('sidebar-close-btn').addEventListener('click', () => toggleSidebar(false));
             document.getElementById('sidebar-backdrop').addEventListener('click', () => toggleSidebar(false));
@@ -819,22 +873,22 @@
             document.getElementById('close-viewer-btn').addEventListener('click', () => {
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
-                pdfIframe.src = '';
-                pdfIframe.style.display = 'none';
-                driveBlocker.classList.remove('pointer-events-auto');
-                currentZoom = 1;
+                canvasContainer.innerHTML = '';
+                pdfDoc = null;
+                currentPage = 1;
+                totalPages = 0;
                 pdfLoaded = false;
                 document.body.classList.remove('fullscreen-mode');
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
-                scrollTopBtn.classList.remove('show');
-                scrollBottomBtn.classList.remove('show');
-                mountDashboardInterface(searchInput.value);
+                mountDashboardInterface();
             });
 
             document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
 
-            // Zoom controls
+            // PDF Controls
+            document.getElementById('prev-page-btn').addEventListener('click', prevPage);
+            document.getElementById('next-page-btn').addEventListener('click', nextPage);
             document.getElementById('zoom-in-btn').addEventListener('click', zoomIn);
             document.getElementById('zoom-out-btn').addEventListener('click', zoomOut);
             document.getElementById('reset-zoom-btn').addEventListener('click', resetZoom);
@@ -843,13 +897,11 @@
             fullscreenToggleBtn.addEventListener('click', toggleFullscreen);
             exitFullscreenBtn.addEventListener('click', toggleFullscreen);
 
-            // Scroll buttons
-            scrollTopBtn.addEventListener('click', scrollToTop);
-            scrollBottomBtn.addEventListener('click', scrollToBottom);
-
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (!viewPdfViewer.classList.contains('hidden')) {
+                    if (e.key === 'ArrowRight' || e.key === 'PageDown') nextPage();
+                    if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevPage();
                     if (e.key === '+' || e.key === '=') zoomIn();
                     if (e.key === '-') zoomOut();
                     if (e.key === '0') resetZoom();
@@ -869,21 +921,6 @@
                 }
             });
 
-            // Dashboard scroll
-            const dashboard = document.getElementById('screen-dashboard');
-            dashboard.addEventListener('scroll', () => {
-                if (dashboard.scrollTop > 100) {
-                    scrollTopBtn.classList.add('show');
-                } else {
-                    scrollTopBtn.classList.remove('show');
-                }
-                if (dashboard.scrollTop < dashboard.scrollHeight - dashboard.clientHeight - 100) {
-                    scrollBottomBtn.classList.add('show');
-                } else {
-                    scrollBottomBtn.classList.remove('show');
-                }
-            });
-
             // Setup touch gestures
             setupTouchGestures();
         }
@@ -894,13 +931,13 @@
         document.addEventListener('DOMContentLoaded', function() {
             keepScreenAwake();
             initTelegramWebApp();
-            mountDashboardInterface('');
+            mountDashboardInterface();
             mountSidebarNavigation();
             setupEventListeners();
             
-            console.log('✅ FreshmanHub initialized - Full Touch Support');
+            console.log('✅ FreshmanHub initialized');
             console.log('📚 7 Courses loaded');
-            console.log('👆 Pinch to zoom, Swipe to scroll');
+            console.log('👆 2 fingers: Swipe up/down for pages, Pinch to zoom');
             console.log('💡 Screen wake lock active');
         });
     </script>
