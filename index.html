@@ -233,13 +233,63 @@
             opacity: 1;
         }
         
-        /* Fallback iframe */
-        #fallback-viewer {
-            display: none;
+        /* ============================================
+           BLOCK GOOGLE DRIVE ICON/ELEMENTS
+           ============================================ */
+        
+        /* Hide any Google Drive elements/buttons */
+        .google-drive-icon,
+        .drive-icon,
+        [class*="drive"],
+        [class*="google"],
+        [aria-label*="Drive"],
+        [aria-label*="google"] {
+            display: none !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+        
+        /* Block any links to Google Drive */
+        a[href*="drive.google.com"],
+        a[href*="google.com/drive"],
+        button[onclick*="drive.google.com"],
+        [onclick*="drive.google.com"] {
+            pointer-events: none !important;
+            cursor: default !important;
+            display: none !important;
+        }
+        
+        /* Overlay to block clicks on Google Drive elements */
+        #drive-blocker-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            border: none;
-            background: #0a0c1a;
+            z-index: 50;
+            pointer-events: auto;
+            background: transparent;
+            display: block;
+        }
+        
+        /* Hide Google Drive toolbar/header */
+        .drive-toolbar,
+        .drive-header,
+        .drive-menu,
+        .drive-actions {
+            display: none !important;
+        }
+        
+        /* Hide any SVG icons that might be Google Drive */
+        svg[class*="drive"],
+        svg[class*="google"] {
+            display: none !important;
+        }
+        
+        /* Block iframe navigation */
+        #fallback-viewer {
+            display: none !important;
         }
         
         @media (max-width: 480px) {
@@ -332,10 +382,10 @@
                 </div>
 
                 <!-- PDF Canvas Container -->
-                <div id="pdf-canvas-container" class="flex-1 bg-[#0a0c1a] relative overflow-y-auto"></div>
-                
-                <!-- Fallback iframe viewer -->
-                <iframe id="fallback-viewer" class="flex-1"></iframe>
+                <div id="pdf-canvas-container" class="flex-1 bg-[#0a0c1a] relative overflow-y-auto">
+                    <!-- BLOCKER OVERLAY - Prevents clicking on Google Drive elements -->
+                    <div id="drive-blocker-overlay"></div>
+                </div>
             </div>
         </main>
 
@@ -353,6 +403,76 @@
     </div>
 
     <script>
+        // ============================================
+        // BLOCK ALL GOOGLE DRIVE ELEMENTS
+        // ============================================
+        function blockGoogleDriveElements() {
+            // 1. Block all link clicks to Google Drive
+            document.addEventListener('click', function(e) {
+                let target = e.target;
+                while (target && target !== document) {
+                    if (target.tagName === 'A') {
+                        const href = target.getAttribute('href');
+                        if (href && href.includes('drive.google.com')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🚫 Blocked Google Drive link');
+                            showGestureIndicator('🚫 ወደ Google Drive መሄድ አይቻልም');
+                            return false;
+                        }
+                    }
+                    // Check for onclick
+                    if (target.onclick && target.onclick.toString().includes('drive.google.com')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🚫 Blocked Google Drive onclick');
+                        return false;
+                    }
+                    target = target.parentElement;
+                }
+            }, true);
+
+            // 2. Block window.open
+            const originalOpen = window.open;
+            window.open = function(url, name, specs) {
+                if (url && url.includes('drive.google.com')) {
+                    console.log('🚫 Blocked window.open to Google Drive');
+                    return null;
+                }
+                return originalOpen.call(this, url, name, specs);
+            };
+
+            // 3. Monitor for Google Drive elements and remove them
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            // Check if node or its children have Google Drive references
+                            if (node.innerHTML && node.innerHTML.includes('drive.google.com')) {
+                                node.style.display = 'none';
+                                node.style.pointerEvents = 'none';
+                                console.log('🚫 Removed Google Drive element');
+                            }
+                            // Check for any links
+                            const links = node.querySelectorAll ? node.querySelectorAll('a[href*="drive.google.com"]') : [];
+                            links.forEach(function(link) {
+                                link.style.display = 'none';
+                                link.style.pointerEvents = 'none';
+                                console.log('🚫 Removed Google Drive link');
+                            });
+                        }
+                    });
+                });
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            console.log('✅ Google Drive elements blocked');
+        }
+
         // ============================================
         // PDF.js Configuration
         // ============================================
@@ -394,12 +514,12 @@
         const activeCourseText = document.getElementById('active-course-banner-text');
         const pdfLoader = document.getElementById('pdf-loader');
         const canvasContainer = document.getElementById('pdf-canvas-container');
-        const fallbackViewer = document.getElementById('fallback-viewer');
         const pageInfo = document.getElementById('page-info');
         const zoomLevel = document.getElementById('zoom-level');
         const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
         const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
         const gestureIndicator = document.getElementById('gesture-indicator');
+        const driveBlocker = document.getElementById('drive-blocker-overlay');
 
         // ============================================
         // STATE
@@ -410,7 +530,6 @@
         let currentCourse = null;
         let isFullscreen = false;
         let pdfLoaded = false;
-        let useFallback = false;
 
         // ============================================
         // GET GOOGLE DRIVE PDF URL
@@ -426,6 +545,20 @@
             if (!pdfDoc) return;
 
             canvasContainer.innerHTML = '';
+            
+            // Add blocker overlay back
+            const blocker = document.createElement('div');
+            blocker.id = 'drive-blocker-overlay';
+            blocker.style.position = 'absolute';
+            blocker.style.top = '0';
+            blocker.style.left = '0';
+            blocker.style.width = '100%';
+            blocker.style.height = '100%';
+            blocker.style.zIndex = '50';
+            blocker.style.pointerEvents = 'auto';
+            blocker.style.background = 'transparent';
+            canvasContainer.appendChild(blocker);
+
             let renderedCount = 0;
             const total = totalPages;
 
@@ -443,6 +576,7 @@
                 canvas.style.borderRadius = '8px';
                 canvas.style.boxShadow = '0 4px 20px rgba(0,0,0,0.5)';
                 canvas.style.background = 'white';
+                canvas.setAttribute('data-page', pageNum);
                 
                 pageWrapper.appendChild(canvas);
                 canvasContainer.appendChild(pageWrapper);
@@ -477,7 +611,7 @@
         }
 
         // ============================================
-        // LOAD PDF - With Fallback
+        // LOAD PDF
         // ============================================
         function loadPdfFromDrive(fileId) {
             const url = getGoogleDrivePdfUrl(fileId);
@@ -491,30 +625,43 @@
                 console.log(`✅ PDF loaded: ${totalPages} pages`);
             }).catch(err => {
                 console.error('❌ PDF.js error:', err);
-                // Fallback to Google Drive embed
-                useFallback = true;
-                useFallbackViewer(fileId);
+                pdfLoader.classList.remove('hidden');
+                pdfLoader.innerHTML = `
+                    <div class="text-center p-6">
+                        <div class="text-5xl mb-4">⚠️</div>
+                        <p class="text-red-400 text-sm font-bold">ፒዲኤፍ መክፈት አልተቻለም</p>
+                        <p class="text-slate-500 text-xs mt-2">${err.message || 'Failed to load PDF'}</p>
+                        <div class="mt-4">
+                            <button onclick="retryLoadPdf()" class="bg-[#6366f1] text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-all">
+                                🔄 እንደገና ሞክር
+                            </button>
+                        </div>
+                    </div>
+                `;
             });
         }
 
         // ============================================
-        // FALLBACK VIEWER - Google Drive Embed
+        // RETRY LOAD
         // ============================================
-        function useFallbackViewer(fileId) {
-            pdfLoader.classList.add('hidden');
-            canvasContainer.style.display = 'none';
-            fallbackViewer.style.display = 'block';
-            fallbackViewer.src = `https://drive.google.com/file/d/${fileId}/preview`;
-            pageInfo.textContent = '📄 Google Drive እይታ';
-            showGestureIndicator('📄 በGoogle Drive እየተከፈተ');
-            console.log('📄 Using fallback viewer');
+        function retryLoadPdf() {
+            if (!currentCourse) return;
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-3"></div>
+                    <p class="text-slate-400 text-xs">⏳ እንደገና እየሞከረ...</p>
+                </div>
+            `;
+            canvasContainer.innerHTML = '';
+            loadPdfFromDrive(currentCourse.fileId);
         }
+        window.retryLoadPdf = retryLoadPdf;
 
         // ============================================
         // ZOOM FUNCTIONS
         // ============================================
         function updateZoom(scale) {
-            if (useFallback) return;
             currentScale = Math.min(Math.max(scale, 0.5), 3);
             zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
             if (pdfDoc) {
@@ -570,16 +717,12 @@
         function openCourseViewer(course) {
             currentCourse = course;
             pdfLoaded = false;
-            useFallback = false;
             
             viewDashboard.classList.add('hidden');
             viewPdfViewer.classList.remove('hidden');
             activeCourseText.innerText = `${course.emoji} ${course.name}`;
             
             canvasContainer.innerHTML = '';
-            canvasContainer.style.display = 'flex';
-            fallbackViewer.style.display = 'none';
-            fallbackViewer.src = '';
             
             pdfLoader.classList.remove('hidden');
             pdfLoader.innerHTML = `
@@ -718,13 +861,9 @@
                 viewPdfViewer.classList.add('hidden');
                 viewDashboard.classList.remove('hidden');
                 canvasContainer.innerHTML = '';
-                canvasContainer.style.display = 'flex';
-                fallbackViewer.style.display = 'none';
-                fallbackViewer.src = '';
                 pdfDoc = null;
                 totalPages = 0;
                 pdfLoaded = false;
-                useFallback = false;
                 document.body.classList.remove('fullscreen-mode');
                 exitFullscreenBtn.classList.remove('show');
                 fullscreenToggleBtn.textContent = '⛶ ሙሉ ማያ';
@@ -766,15 +905,19 @@
         // INITIALIZE
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
+            // FIRST: Block Google Drive elements
+            blockGoogleDriveElements();
+            
             keepScreenAwake();
             initTelegramWebApp();
             mountDashboardInterface();
             mountSidebarNavigation();
             setupEventListeners();
             
-            console.log('✅ FreshmanHub initialized - Anthropology PDF');
+            console.log('✅ FreshmanHub initialized');
+            console.log('🚫 Google Drive icon/elements BLOCKED');
             console.log('📚 Anthropology course loaded');
-            console.log('📄 All pages will render on Canvas');
+            console.log('📄 All pages render on Canvas');
         });
     </script>
 </body>
