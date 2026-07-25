@@ -4,33 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- Tailwind CSS for Premium Premium Gen-Z UI -->
-    <script src="https://tailwindcss.com"></script>
-    <!-- Mozilla PDF.js Core Library -->
+    <!-- Tailwind CSS Dynamic Integration (Fixed Structure) -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- Mozilla PDF.js Core Library Platform Setup -->
     <script src="https://cloudflare.com"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cloudflare.com';
-        
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            darkBg: '#05070f',
-                            darkSurface: '#0f1123',
-                            lightBg: '#f1f5f9',
-                            lightSurface: '#ffffff',
-                            neonCyan: '#00f2fe',
-                            neonPink: '#ff007f',
-                            royalPurple: '#6366f1'
-                        }
-                    }
-                }
-            }
-        }
     </script>
     <style>
+        /* ABSOLUTE HIGH-SECURITY ENCRYPTED LAYER STYLING */
         * {
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
@@ -40,7 +22,7 @@
             outline: none !important;
             -webkit-tap-highlight-color: transparent;
         }
-        body { overflow-x: hidden; touch-action: pan-y; }
+        body { overflow-x: hidden; touch-action: pan-y; background-color: #05070f; color: #f8fafc; }
         img, canvas { pointer-events: none !important; -webkit-user-drag: none !important; user-drag: none !important; }
         @media print { body, html, #app-root { display: none !important; visibility: hidden !important; } }
         ::-webkit-scrollbar { width: 4px; }
@@ -49,64 +31,66 @@
         .light ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 10px; }
     </style>
 </head>
-<body class="bg-brand-darkBg text-slate-100 font-sans transition-colors duration-300">
+<body class="bg-[#05070f] text-slate-100 font-sans transition-colors duration-300">
 
-    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 dark:bg-brand-darkBg light:bg-brand-lightBg transition-colors">
+    <div id="app-root" class="relative min-h-screen flex flex-col max-w-md mx-auto shadow-2xl border-x border-slate-900/60 transition-colors">
         
-        <header class="sticky top-0 z-40 backdrop-blur-xl bg-brand-darkSurface/90 dark:bg-brand-darkSurface/90 light:bg-white/90 border-b border-slate-900/50 dark:border-slate-900/50 light:border-slate-200/80 p-4 transition-colors">
+        <!-- HEADER DESIGN MODULE -->
+        <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#0f1123]/90 border-b border-slate-900/50 p-4 transition-colors">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
-                    <button id="sidebar-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 dark:bg-slate-900/50 light:bg-slate-100 border border-slate-800/40 dark:border-slate-800/40 light:border-slate-200 active:scale-95 transition-all">
-                        <svg class="w-5 h-5 text-brand-neonCyan dark:text-brand-neonCyan light:text-brand-royalPurple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <button id="sidebar-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 border border-slate-800/40 active:scale-95 transition-all">
+                        <svg class="w-5 h-5 text-[#00f2fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
-                    <h1 class="text-lg font-black bg-gradient-to-r from-brand-neonCyan via-brand-neonPink to-brand-royalPurple bg-clip-text text-transparent tracking-tight">FreshmanHub</h1>
+                    <h1 class="text-lg font-black bg-gradient-to-r from-[#00f2fe] via-[#ff007f] to-[#6366f1] bg-clip-text text-transparent tracking-tight">FreshmanHub</h1>
                 </div>
-                <button id="theme-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 dark:bg-slate-900/50 light:bg-slate-100 border border-slate-800/40 dark:border-slate-800/40 light:border-slate-200 transition-all text-base active:scale-95">🌙</button>
+                <button id="theme-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-base active:scale-95">🌙</button>
             </div>
             <div id="search-box-container" class="relative">
                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">🔍</span>
-                <input type="text" id="course-filter-input" placeholder="ኮርሶችን ይፈልጉ (Search courses...)" class="w-full pl-9 pr-4 py-2 bg-brand-darkBg dark:bg-brand-darkBg light:bg-slate-50 border border-slate-800 dark:border-slate-800 light:border-slate-300 rounded-xl focus:border-brand-neonCyan dark:focus:border-brand-neonCyan light:focus:border-brand-royalPurple text-xs font-medium transition-all text-slate-200 dark:text-slate-200 light:text-slate-800">
+                <input type="text" id="course-filter-input" placeholder="ኮርሶችን ይፈልጉ (Search courses...)" class="w-full pl-9 pr-4 py-2 bg-[#05070f] border border-slate-800 rounded-xl focus:border-[#00f2fe] text-xs font-medium transition-all text-slate-200">
             </div>
         </header>
 
+        <!-- SIDEBAR CONTAINER MODULE -->
         <div id="sidebar-backdrop" class="fixed inset-0 bg-black/80 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
-        <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-brand-darkSurface dark:bg-brand-darkSurface light:bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 dark:border-slate-900 light:border-slate-200 flex flex-col shadow-2xl">
-            <div class="p-4 border-b border-slate-900 dark:border-slate-900 light:border-slate-200 flex items-center justify-between">
-                <span class="font-black text-sm text-transparent bg-gradient-to-r from-brand-neonCyan to-brand-royalPurple bg-clip-text">የኮርሶች ዝርዝር</span>
-                <button id="sidebar-close-btn" class="text-slate-400 dark:text-slate-400 light:text-slate-500 text-sm p-1.5">✕</button>
+        <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-[#0f1123] z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-900 flex items-center justify-between">
+                <span class="font-black text-sm text-transparent bg-gradient-to-r from-[#00f2fe] to-[#6366f1] bg-clip-text">የኮርሶች ዝርዝር</span>
+                <button id="sidebar-close-btn" class="text-slate-400 text-sm p-1.5">✕</button>
             </div>
             <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5"></nav>
         </aside>
 
+        <!-- VIEWPORT ENGINE BODY LAYER -->
         <main class="flex-1 p-4 relative z-10">
             <div id="screen-dashboard" class="space-y-4">
-                <div class="p-4 rounded-2xl bg-gradient-to-br from-brand-royalPurple/20 to-brand-neonPink/5 border border-brand-royalPurple/30">
-                    <h2 class="text-sm font-bold text-white dark:text-white light:text-slate-900">ሰላም ለእናንተ ይሁን 👋</h2>
-                    <p class="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-600 mt-1 leading-relaxed">ለዩኒቨርሲቲ አንደኛ አመት ተማሪዎች የተዘጋጁ የትምህርት ማጠቃለያዎች። ፋይሎችን ኮፒ ማድረግ ወይም ማውረድ በጥብቅ የተከለከለ ነው።</p>
+                <div class="p-4 rounded-2xl bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5 border border-[#6366f1]/30">
+                    <h2 class="text-sm font-bold text-white">ሰላም ለእናንተ ይሁን 👋</h2>
+                    <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">ለዩኒቨርሲቲ አንደኛ አመት ተማሪዎች የተዘጋጁ የትምህርት ማጠቃለያዎች። ፋይሎችን ኮፒ ማድረግ ወይም ማውረድ በጥብቅ የተከለከለ ነው።</p>
                 </div>
                 <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
             </div>
 
             <div id="screen-pdf-viewer" class="hidden space-y-3">
-                <div class="flex items-center justify-between bg-brand-darkSurface dark:bg-brand-darkSurface light:bg-white p-2.5 rounded-xl border border-slate-900 dark:border-slate-900 light:border-slate-200/80">
-                    <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-brand-neonCyan dark:text-brand-neonCyan light:text-brand-royalPurple active:scale-95 transition-transform">⬅ ወደ ኋላ መመለሻ</button>
-                    <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 dark:text-slate-400 light:text-slate-600 truncate max-w-[160px]">Course</span>
+                <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
+                    <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform">⬅ ወደ ኋላ መመለሻ</button>
+                    <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[160px]">Course</span>
                 </div>
                 <div id="rendering-canvas-infinite-viewport" class="space-y-2 bg-black/20 rounded-xl p-0.5 flex flex-col items-center overflow-x-hidden min-h-[300px]"></div>
                 <div id="engine-render-spinner" class="hidden flex flex-col items-center justify-center p-12 space-y-2">
-                    <div class="w-8 h-8 border-3 border-brand-neonCyan border-t-transparent rounded-full animate-spin"></div>
-                    <p class="text-[10px] font-mono tracking-widest text-brand-neonCyan animate-pulse">SECURING GRAPHIC PIXELS...</p>
+                    <div class="w-8 h-8 border-3 border-[#00f2fe] border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-[10px] font-mono tracking-widest text-[#00f2fe] animate-pulse">SECURING GRAPHIC PIXELS...</p>
                 </div>
             </div>
         </main>
 
-        <footer class="p-3 text-center border-t border-slate-900 dark:border-slate-900 light:border-slate-200/60 bg-slate-950/20 dark:bg-slate-950/20 light:bg-slate-50 transition-colors">
-            <p class="text-[9px] font-mono tracking-wider text-slate-600 dark:text-slate-600 light:text-slate-400">🔒 PROTECTED BY ENCRYPTED READ-ONLY ENGINE</p>
+        <footer class="p-3 text-center border-t border-slate-900 bg-slate-950/20 transition-colors">
+            <p class="text-[9px] font-mono tracking-wider text-slate-600">🔒 PROTECTED BY ENCRYPTED READ-ONLY ENGINE</p>
         </footer>
     </div>
 
     <script>
-        // --- የእርስዎ እውነተኛ የጉግል ድራይቭ ሊንክ እዚህ 1ኛ መስመር ላይ ገብቷል ---
         const APPLICATION_LOCAL_DATABASE = [
             { id: "logic", name: "Logic and Critical Thinking", amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", emoji: "🧠", url: "https://google.com" },
             { id: "psychology", name: "Psychology", amharicName: "ሳይኮሎጂ (የስነ-ልቦና ትምህርት)", emoji: "👥", url: "https://arxiv.org" },
@@ -125,3 +109,28 @@
                 if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
                 const verifyMetaPlatform = navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? e.metaKey : e.ctrlKey;
                 const mapChar = String.fromCharCode(e.keyCode).toLowerCase();
+                if (verifyMetaPlatform && (mapChar === 'c' || mapChar === 'x' || mapChar === 'a' || mapChar === 'u')) {
+                    e.preventDefault(); e.stopPropagation(); return false;
+                }
+            }, true);
+            window.addEventListener('dragstart', e => e.preventDefault(), true);
+        })();
+
+        const dashboardGrid = document.getElementById('dashboard-grid-container');
+        const sidebarLinksTarget = document.getElementById('sidebar-links-target');
+        const searchInput = document.getElementById('course-filter-input');
+        const viewDashboard = document.getElementById('screen-dashboard');
+        const viewPdfViewer = document.getElementById('screen-pdf-viewer');
+        const wrapperSearchBox = document.getElementById('search-box-container');
+        const canvasInfiniteBox = document.getElementById('rendering-canvas-infinite-viewport');
+        const renderSpinner = document.getElementById('engine-render-spinner');
+        const activeCourseText = document.getElementById('active-course-banner-text');
+
+        function mountDashboardInterface(query = '') {
+            dashboardGrid.innerHTML = '';
+            const normalizedQuery = query.toLowerCase();
+            const parsedMatches = APPLICATION_LOCAL_DATABASE.filter(course => 
+                course.name.toLowerCase().includes(normalizedQuery) || course.amharicName.includes(query)
+            );
+            parsedMatches.forEach(course => {
+                const uiTileNode = document.createElement('div');
