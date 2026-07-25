@@ -6,10 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- PDF.js CDN (secure, latest stable) -->
+    <!-- PDF.js (latest stable) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
-        /* hardened reset + no selection / no copy */
+        /* hardened no-select, no-copy, no-download */
         * {
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
@@ -24,45 +24,55 @@
             margin: 0;
             overflow-x: hidden;
             touch-action: pan-y;
-            background-color: #05070f !important;
-            color: #f8fafc !important;
+            background-color: #0a0c1a !important;
+            color: #eef2ff !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        body.light {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
         }
         .text-gradient {
-            background: linear-gradient(to right, #00f2fe, #ff007f, #6366f1);
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         .glass-effect {
-            background: rgba(15, 17, 35, 0.9);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(10, 12, 26, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        body.light .glass-effect {
+            background: rgba(241, 245, 249, 0.85);
         }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #0f1123; }
-        ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .course-card { animation: fadeIn 0.3s ease-out; }
-        @supports (padding: max(0px)) {
-            .safe-top { padding-top: max(env(safe-area-inset-top), 16px); }
-            .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
-        }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #818cf8; border-radius: 10px; }
+        body.light ::-webkit-scrollbar-track { background: #cbd5e1; }
+        body.light ::-webkit-scrollbar-thumb { background: #6366f1; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .course-card { animation: fadeIn 0.25s ease-out; }
+        .safe-top { padding-top: max(env(safe-area-inset-top), 12px); }
+        .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
         .loading-spinner {
             border: 3px solid #1e293b;
-            border-top: 3px solid #6366f1;
+            border-top: 3px solid #818cf8;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            width: 36px;
+            height: 36px;
+            animation: spin 0.9s linear infinite;
         }
+        body.light .loading-spinner { border-color: #cbd5e1; border-top-color: #6366f1; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .pdf-viewer-container {
-            background: #0f1123;
+            background: #0a0c1a;
             position: relative;
             height: 100%;
             overflow-y: auto;
         }
+        body.light .pdf-viewer-container { background: #e2e8f0; }
         .pdf-page-container {
             display: flex;
             flex-direction: column;
@@ -73,10 +83,11 @@
         .pdf-page-canvas {
             display: block;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
             max-width: 100%;
             height: auto !important;
+            pointer-events: none !important;
         }
         canvas {
             -webkit-user-select: none !important;
@@ -86,8 +97,8 @@
         .watermark-hint {
             position: fixed;
             bottom: 80px;
-            right: 20px;
-            color: rgba(99, 102, 241, 0.08);
+            right: 16px;
+            color: rgba(129, 140, 248, 0.07);
             font-size: 10px;
             font-weight: bold;
             letter-spacing: 2px;
@@ -95,7 +106,22 @@
             z-index: 6;
             transform: rotate(-15deg);
         }
-        #app-root { max-width: 480px; margin: 0 auto; background: #05070f; min-height: 100vh; display: flex; flex-direction: column; border-left: 1px solid #1e293b; border-right: 1px solid #1e293b; }
+        body.light .watermark-hint { color: rgba(99, 102, 241, 0.07); }
+        #app-root {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #0a0c1a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #1e293b;
+            border-right: 1px solid #1e293b;
+        }
+        body.light #app-root {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+        /* utility classes */
         .bg-slate-900\/60 { background-color: rgba(15, 23, 42, 0.6); }
         .border-slate-900 { border-color: #0f172a; }
         .border-slate-800 { border-color: #1e293b; }
@@ -112,87 +138,103 @@
         .border-\[\#6366f1\]\/30 { border-color: rgba(99, 102, 241, 0.3); }
         .from-\[\#6366f1\]\/20 { --tw-gradient-from: rgba(99, 102, 241, 0.2); }
         .to-\[\#ff007f\]\/5 { --tw-gradient-to: rgba(255, 0, 127, 0.05); }
+        /* light overrides */
+        body.light .border-slate-900 { border-color: #cbd5e1; }
+        body.light .border-slate-800 { border-color: #94a3b8; }
+        body.light .bg-slate-900\/50 { background-color: rgba(226, 232, 240, 0.6); }
+        body.light .bg-slate-900\/60 { background-color: rgba(226, 232, 240, 0.6); }
+        body.light .text-slate-400 { color: #64748b; }
+        body.light .text-slate-200 { color: #1e293b; }
+        body.light .text-slate-300 { color: #334155; }
+        body.light .text-slate-500 { color: #475569; }
+        body.light .text-slate-600 { color: #1e293b; }
+        body.light .bg-slate-950\/20 { background-color: rgba(226, 232, 240, 0.3); }
+        body.light .border-slate-800\/60 { border-color: rgba(148, 163, 184, 0.5); }
+        body.light .border-slate-900\/50 { border-color: rgba(148, 163, 184, 0.5); }
+        body.light .border-slate-900\/40 { border-color: rgba(148, 163, 184, 0.4); }
+        body.light .from-\[\#6366f1\]\/20 { --tw-gradient-from: rgba(99, 102, 241, 0.15); }
+        body.light .to-\[\#ff007f\]\/5 { --tw-gradient-to: rgba(244, 114, 182, 0.08); }
+        body.light .pdf-page-canvas { box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
     </style>
 </head>
 <body>
 <div id="app-root">
     <!-- HEADER -->
-    <header class="sticky top-0 z-40 glass-effect border-b border-slate-900/50 p-4 safe-top" style="border-bottom: 1px solid rgba(15,23,42,0.5);">
-        <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-3">
-                <button id="sidebar-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 border border-slate-800/40 active:scale-95 transition-all hover:border-[#00f2fe]/30" style="background: rgba(15,23,42,0.5); border-color: rgba(30,41,59,0.4);">
-                    <svg class="w-5 h-5 text-[#00f2fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    <header class="sticky top-0 z-40 glass-effect border-b border-slate-900/50 p-3 safe-top" style="border-bottom: 1px solid rgba(15,23,42,0.4);">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+                <button id="sidebar-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 border border-slate-800/40 active:scale-95 transition-all hover:border-[#60a5fa]/40">
+                    <svg class="w-5 h-5 text-[#60a5fa]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
                 <h1 class="text-lg font-black text-gradient tracking-tight">FreshmanHub</h1>
             </div>
-            <button id="theme-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-base active:scale-95 hover:border-[#00f2fe]/30" style="background: rgba(15,23,42,0.5); border-color: rgba(30,41,59,0.4);">🌙</button>
+            <button id="theme-toggle-btn" class="p-2 rounded-xl bg-slate-900/50 border border-slate-800/40 transition-all text-base active:scale-95 hover:border-[#60a5fa]/40">🌙</button>
         </div>
-        <div id="search-box-container" class="relative">
+        <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">🔍</span>
-            <input type="text" id="course-filter-input" placeholder="ኮርሶችን ይፈልጉ (Search courses...)" class="w-full pl-9 pr-4 py-2.5 bg-[#05070f] border border-slate-800 rounded-xl focus:border-[#00f2fe] text-xs font-medium transition-all text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#00f2fe]/50">
+            <input type="text" id="course-filter-input" placeholder="Search courses..." class="w-full pl-9 pr-4 py-2 bg-[#0a0c1a] border border-slate-800 rounded-xl focus:border-[#818cf8] text-xs font-medium transition-all text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#818cf8]/50">
         </div>
     </header>
 
     <!-- SIDEBAR -->
-    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/80 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/70 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
     <aside id="sidebar-panel" class="fixed top-0 bottom-0 left-0 w-72 max-w-[75vw] bg-[#0f1123] z-50 transform -translate-x-full transition-transform duration-300 ease-out border-r border-slate-900 flex flex-col shadow-2xl">
         <div class="p-4 border-b border-slate-900 flex items-center justify-between safe-top">
-            <span class="font-black text-sm text-gradient">የኮርሶች ዝርዝር</span>
+            <span class="font-black text-sm text-gradient">Course List</span>
             <button id="sidebar-close-btn" class="text-slate-400 text-sm p-1.5 hover:text-white transition-colors">✕</button>
         </div>
-        <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1.5 safe-bottom"></nav>
+        <nav id="sidebar-links-target" class="flex-1 overflow-y-auto p-3 space-y-1 safe-bottom"></nav>
     </aside>
 
     <!-- MAIN -->
-    <main class="flex-1 p-4 relative z-10 flex flex-col">
+    <main class="flex-1 p-3 relative z-10 flex flex-col">
         <!-- Dashboard -->
-        <div id="screen-dashboard" class="space-y-4 flex-1">
-            <div class="p-4 rounded-2xl border border-[#6366f1]/30 bg-gradient-to-br from-[#6366f1]/20 to-[#ff007f]/5">
-                <h2 class="text-sm font-bold text-white">ሰላም ለእናንተ ይሁን 👋</h2>
-                <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">ለዩኒቨርሲቲ አንደኛ አመት ተማሪዎች የተዘጋጁ የትምህርት ማጠቃለያዎች። ፋይሎችን ኮፒ ማድረግ ወይም ማውረድ በጥብቅ የተከለከለ ነው።</p>
+        <div id="screen-dashboard" class="space-y-3 flex-1">
+            <div class="p-4 rounded-2xl border border-[#818cf8]/30 bg-gradient-to-br from-[#818cf8]/15 to-[#f472b6]/5">
+                <h2 class="text-sm font-bold text-white">Welcome 👋</h2>
+                <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">Freshman course summaries. Copying & downloading are strictly disabled.</p>
             </div>
-            <div id="dashboard-grid-container" class="grid grid-cols-1 gap-3"></div>
+            <div id="dashboard-grid-container" class="grid grid-cols-1 gap-2.5"></div>
         </div>
 
         <!-- PDF Viewer (secured) -->
-        <div id="screen-pdf-viewer" class="hidden space-y-3 h-[calc(100vh-170px)] flex flex-col flex-1">
-            <div class="flex items-center justify-between bg-[#0f1123] p-2.5 rounded-xl border border-slate-900">
-                <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#00f2fe] active:scale-95 transition-transform hover:text-white">⬅ ወደ ኋላ መመለሻ</button>
-                <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[180px]">Course</span>
+        <div id="screen-pdf-viewer" class="hidden space-y-2 h-[calc(100vh-160px)] flex flex-col flex-1">
+            <div class="flex items-center justify-between bg-[#0f1123] p-2 rounded-xl border border-slate-900">
+                <button id="close-viewer-btn" class="flex items-center gap-1 text-xs font-bold text-[#60a5fa] active:scale-95 transition-transform hover:text-white">⬅ Back</button>
+                <span id="active-course-banner-text" class="text-[11px] font-bold text-slate-400 truncate max-w-[160px]">Course</span>
                 <span class="text-[10px] text-yellow-500 font-bold flex items-center gap-1">🔒 Protected</span>
             </div>
-            <div class="p-2 bg-slate-900/40 rounded-xl border border-slate-800/60 text-center">
-                <p class="text-[11px] text-slate-300 font-medium">⚠️ Content is protected - Copying & Downloading disabled</p>
+            <div class="p-1.5 bg-slate-900/40 rounded-xl border border-slate-800/60 text-center">
+                <p class="text-[10px] text-slate-300 font-medium">⛔ No copy, no download • Zoom enabled</p>
             </div>
             <div class="flex-1 w-full rounded-xl overflow-y-auto border border-slate-800 pdf-viewer-container" id="pdf-viewer-scroll">
-                <div id="iframe-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-[#05070f] z-10">
+                <div id="iframe-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0c1a] z-10">
                     <div class="loading-spinner"></div>
-                    <p class="text-slate-400 text-xs mt-4">ቁሳቁሱ በደህንነት በመጫን ላይ ነው...</p>
+                    <p class="text-slate-400 text-xs mt-3">Loading securely...</p>
                 </div>
                 <div id="secure-pdf-render-area" class="pdf-page-container"></div>
             </div>
         </div>
     </main>
 
-    <footer class="p-3 text-center border-t border-slate-900/40 bg-slate-950/20 text-[10px] tracking-wider font-bold text-slate-600">🔒 PROTECTED BY ENCRYPTED READ-ONLY ENGINE</footer>
+    <footer class="p-2 text-center border-t border-slate-900/40 bg-slate-950/20 text-[9px] tracking-wider font-bold text-slate-600">🔒 READ-ONLY ENGINE</footer>
     <div class="watermark-hint">READ ONLY</div>
 </div>
 
 <script>
     (function() {
-        // ---------- course definitions (7 PDFs) ----------
-        // all PDFs hosted on GitHub raw (public) – change to your own raw URLs if needed
+        // ---------- 7 courses (with emoji) ----------
         const COURSES = [
-            { id: 'math101', title: 'Math 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
-            { id: 'physics101', title: 'Physics 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
-            { id: 'chem101', title: 'Chemistry 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
-            { id: 'biology101', title: 'Biology 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
-            { id: 'cs101', title: 'Computer Science 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
-            { id: 'eng101', title: 'English 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
-            { id: 'history101', title: 'History 101', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' }
+            { id: 'logic', title: '🧠 Logic & Critical Thinking', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
+            { id: 'psychology', title: '👥 Psychology', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
+            { id: 'anthropology', title: '🦴 Anthropology', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
+            { id: 'economics', title: '📈 Economics', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
+            { id: 'emerging', title: '🤖 Emerging Technology', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
+            { id: 'global', title: '🌍 Global Trends', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' },
+            { id: 'civics', title: '⚖️ Civics', pdfUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf' }
         ];
 
-        // ---------- DOM refs ----------
+        // DOM refs
         const dashboardGrid = document.getElementById('dashboard-grid-container');
         const screenDashboard = document.getElementById('screen-dashboard');
         const screenPdf = document.getElementById('screen-pdf-viewer');
@@ -208,49 +250,40 @@
         const filterInput = document.getElementById('course-filter-input');
         const themeBtn = document.getElementById('theme-toggle-btn');
 
-        // ---------- state ----------
-        let currentCourseId = null;
-        let isPdfViewerOpen = false;
-        let pdfDoc = null;
         let renderTasks = [];
-        let allCourseItems = []; // for filtering
+        let currentCourseId = null;
 
-        // ---------- helpers ----------
+        // helper: show dashboard
         function showDashboard() {
             screenDashboard.classList.remove('hidden');
             screenPdf.classList.add('hidden');
-            isPdfViewerOpen = false;
-            // clear render area
             secureRenderArea.innerHTML = '';
             iframeLoader.style.display = 'flex';
+            renderTasks.forEach(t => t.cancel && t.cancel());
+            renderTasks = [];
         }
 
+        // show pdf viewer
         function showPdfViewer(courseId) {
             screenDashboard.classList.add('hidden');
             screenPdf.classList.remove('hidden');
-            isPdfViewerOpen = true;
             const course = COURSES.find(c => c.id === courseId);
             if (course) activeBanner.textContent = course.title;
             else activeBanner.textContent = 'Course';
-            // load pdf
             loadPdf(courseId);
         }
 
-        // ---------- pdf rendering (secure, canvas only) ----------
+        // load and render pdf
         function loadPdf(courseId) {
             const course = COURSES.find(c => c.id === courseId);
             if (!course) return;
-            // clear previous
             secureRenderArea.innerHTML = '';
             iframeLoader.style.display = 'flex';
-            // cancel any pending tasks
-            renderTasks.forEach(task => task.cancel && task.cancel());
+            renderTasks.forEach(t => t.cancel && t.cancel());
             renderTasks = [];
 
             const url = course.pdfUrl;
-            // use pdf.js with CORS support
             pdfjsLib.getDocument({ url: url, withCredentials: false }).promise.then(function(pdf) {
-                pdfDoc = pdf;
                 iframeLoader.style.display = 'none';
                 renderAllPages(pdf);
             }).catch(function(err) {
@@ -261,64 +294,53 @@
         }
 
         function renderAllPages(pdf) {
-            const totalPages = pdf.numPages;
             const container = secureRenderArea;
             container.innerHTML = '';
-            let pagePromises = [];
-            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-                pagePromises.push(renderPage(pdf, pageNum, container));
+            const totalPages = pdf.numPages;
+            for (let p = 1; p <= totalPages; p++) {
+                renderPage(pdf, p, container);
             }
-            Promise.all(pagePromises).then(() => {
-                // all pages rendered
-            }).catch(err => {
-                console.warn('Page render warning:', err);
-            });
         }
 
         function renderPage(pdf, pageNum, container) {
-            return pdf.getPage(pageNum).then(function(page) {
-                const viewport = page.getViewport({ scale: 1.5 });
+            pdf.getPage(pageNum).then(function(page) {
+                const viewport = page.getViewport({ scale: 1.4 });
                 const canvas = document.createElement('canvas');
                 canvas.className = 'pdf-page-canvas';
-                // scale to fit width (max 100% with aspect)
                 const containerWidth = container.clientWidth - 20;
-                let scale = 1.5;
+                let scale = 1.4;
                 if (viewport.width * scale > containerWidth && containerWidth > 0) {
                     scale = (containerWidth) / viewport.width;
                 }
-                const scaledViewport = page.getViewport({ scale: scale });
-                canvas.width = scaledViewport.width;
-                canvas.height = scaledViewport.height;
+                const scaled = page.getViewport({ scale: scale });
+                canvas.width = scaled.width;
+                canvas.height = scaled.height;
                 canvas.style.width = '100%';
                 canvas.style.height = 'auto';
-                // draw
                 const ctx = canvas.getContext('2d');
-                const renderTask = page.render({ canvasContext: ctx, viewport: scaledViewport });
-                renderTasks.push(renderTask);
-                return renderTask.promise.then(() => {
-                    container.appendChild(canvas);
-                }).catch(() => {});
-            });
+                const task = page.render({ canvasContext: ctx, viewport: scaled });
+                renderTasks.push(task);
+                task.promise.then(() => { container.appendChild(canvas); }).catch(() => {});
+            }).catch(() => {});
         }
 
-        // ---------- build dashboard & sidebar ----------
+        // build UI (dashboard + sidebar) with filter
         function buildUI(filterText = '') {
             const filtered = COURSES.filter(c => c.title.toLowerCase().includes(filterText.toLowerCase()));
             // dashboard
             dashboardGrid.innerHTML = '';
             filtered.forEach(c => {
                 const card = document.createElement('div');
-                card.className = 'course-card p-4 rounded-2xl border border-slate-800 bg-slate-900/20 hover:border-[#00f2fe]/40 transition-all cursor-pointer active:scale-95';
+                card.className = 'course-card p-3 rounded-xl border border-slate-800 bg-slate-900/20 hover:border-[#818cf8]/50 transition-all cursor-pointer active:scale-95';
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
                         <span class="font-bold text-sm text-white">${c.title}</span>
-                        <span class="text-[10px] bg-[#6366f1]/20 text-[#00f2fe] px-2 py-1 rounded-full">📄 PDF</span>
+                        <span class="text-[9px] bg-[#818cf8]/20 text-[#60a5fa] px-2 py-0.5 rounded-full">📄 PDF</span>
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1">Click to open (read-only)</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Tap to open (read-only)</p>
                 `;
                 card.dataset.courseId = c.id;
-                card.addEventListener('click', function(e) {
-                    e.stopPropagation();
+                card.addEventListener('click', function() {
                     const id = this.dataset.courseId;
                     if (id) showPdfViewer(id);
                 });
@@ -336,16 +358,13 @@
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
                     const id = this.dataset.courseId;
-                    if (id) {
-                        showPdfViewer(id);
-                        closeSidebar();
-                    }
+                    if (id) { showPdfViewer(id); closeSidebar(); }
                 });
                 sidebarLinks.appendChild(link);
             });
         }
 
-        // ---------- sidebar control ----------
+        // sidebar controls
         function openSidebar() {
             sidebarPanel.classList.remove('-translate-x-full');
             sidebarBackdrop.classList.remove('opacity-0', 'pointer-events-none');
@@ -360,76 +379,53 @@
         sidebarClose.addEventListener('click', closeSidebar);
         sidebarBackdrop.addEventListener('click', closeSidebar);
 
-        // ---------- close viewer ----------
+        // close viewer
         closeViewerBtn.addEventListener('click', function() {
             showDashboard();
-            // cancel tasks
-            renderTasks.forEach(task => task.cancel && task.cancel());
+            renderTasks.forEach(t => t.cancel && t.cancel());
             renderTasks = [];
             secureRenderArea.innerHTML = '';
             iframeLoader.style.display = 'flex';
         });
 
-        // ---------- filter ----------
+        // filter
         filterInput.addEventListener('input', function(e) {
             buildUI(e.target.value);
         });
 
-        // ---------- theme toggle (simple) ----------
-        let dark = true;
+        // theme toggle
+        let isDark = true;
         themeBtn.addEventListener('click', function() {
-            dark = !dark;
-            document.body.style.backgroundColor = dark ? '#05070f' : '#f1f5f9';
-            document.body.style.color = dark ? '#f8fafc' : '#0f172a';
-            themeBtn.textContent = dark ? '🌙' : '☀️';
+            isDark = !isDark;
+            document.body.classList.toggle('light', !isDark);
+            themeBtn.textContent = isDark ? '🌙' : '☀️';
         });
 
-        // ---------- init ----------
+        // block all copy, download, context menu, shortcuts
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('selectstart', e => e.preventDefault());
+        document.addEventListener('copy', e => e.preventDefault());
+        document.addEventListener('cut', e => e.preventDefault());
+        document.addEventListener('paste', e => e.preventDefault());
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && (e.key === 's' || e.key === 'p' || e.key === 'c' || e.key === 'u' || e.key === 'i' || e.key === 'j')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // init
         function init() {
-            // set worker source (for pdf.js)
             if (typeof pdfjsLib !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
             }
             buildUI();
             showDashboard();
         }
-
-        // handle resize for dynamic pdf re-render? we just re-render on open
-        // if viewer is open and resize occurs, we could re-render but keep simple.
-
-        // expose to global for debugging
-        window.__app = { COURSES, showPdfViewer, showDashboard, buildUI };
-
-        // when window loads
         if (document.readyState === 'complete') init();
         else window.addEventListener('load', init);
 
-        // ensure that clicking on canvas does nothing (already pointer-events: none)
-        // additionally block context menu on all elements
-        document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
-        document.addEventListener('selectstart', function(e) { e.preventDefault(); return false; });
-        document.addEventListener('copy', function(e) { e.preventDefault(); return false; });
-        document.addEventListener('cut', function(e) { e.preventDefault(); return false; });
-        document.addEventListener('paste', function(e) { e.preventDefault(); return false; });
-
-        // prevent any download / print keyboard shortcuts (basic)
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && (e.key === 's' || e.key === 'p' || e.key === 'c' || e.key === 'u' || e.key === 'i')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // special handling for telegram webview: prevent external links
-        document.querySelectorAll('a[href]').forEach(a => {
-            a.addEventListener('click', function(e) {
-                if (this.href && !this.href.startsWith('#')) {
-                    e.preventDefault();
-                }
-            });
-        });
-
-        console.log('🔒 Freshman Read-Only Viewer initialized (GitHub PDFs)');
+        console.log('🔒 Freshman Read-Only Viewer ready (7 courses)');
     })();
 </script>
 </body>
