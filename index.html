@@ -6,9 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Freshman Read-Only Course Viewer</title>
-    <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <!-- PDF.js for Canvas rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
@@ -75,7 +73,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Canvas container */
         #pdf-canvas-container {
             background: #0f1123;
             overflow-y: auto;
@@ -96,21 +93,22 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            padding: 10px;
+            gap: 10px;
+            padding: 8px 10px;
             background: #0f1123;
             border-bottom: 1px solid #1e293b;
             flex-wrap: wrap;
         }
         .pdf-controls button {
-            padding: 6px 14px;
+            padding: 5px 12px;
             border-radius: 8px;
             background: #1e293b;
             color: #f8fafc;
             border: 1px solid #334155;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             transition: all 0.2s;
+            min-height: 36px;
         }
         .pdf-controls button:active {
             transform: scale(0.95);
@@ -121,7 +119,7 @@
         }
         .pdf-controls span {
             color: #94a3b8;
-            font-size: 12px;
+            font-size: 11px;
         }
     </style>
 </head>
@@ -216,7 +214,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         // ============================================
-        // COURSE DATA - Google Drive PDF Links
+        // COURSE DATA - Using Google Drive File IDs Only
         // ============================================
         const APPLICATION_LOCAL_DATABASE = [
             { 
@@ -224,50 +222,49 @@
                 name: "Logic and Critical Thinking", 
                 amharicName: "ሎጂክ እና ሂሳባዊ አስተሳሰብ", 
                 emoji: "🧠", 
-                // Google Drive direct download URL (for PDF.js to work)
-                url: "https://drive.google.com/uc?export=download&id=1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp"
+                fileId: "1ALxgT1Uy7GgzpgAqfYejyfbpo1XMw9Rp"
             },
             { 
                 id: "psychology", 
                 name: "Psychology", 
                 amharicName: "ሳይኮሎጂ (የስነ-ልቦና ትምህርት)", 
                 emoji: "👥", 
-                url: "https://drive.google.com/uc?export=download&id=1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p"
+                fileId: "1DFuPHZtj1YWyH0xq8Dp6Il24ice54O1p"
             },
             { 
                 id: "anthropology", 
                 name: "Anthropology", 
                 amharicName: "አንትሮፖሎጂ (የሰው ልጅ አመጣጥ ስነ-ባህል)", 
                 emoji: "🦴", 
-                url: "https://drive.google.com/uc?export=download&id=1h8sNuyWE2ANft8JF7e4LugefEFSeBga8"
+                fileId: "1h8sNuyWE2ANft8JF7e4LugefEFSeBga8"
             },
             { 
                 id: "economics", 
                 name: "Economics", 
                 amharicName: "ኢኮኖሚክስ (የምጣኔ ሀብት ትምህርት)", 
                 emoji: "📈", 
-                url: "https://drive.google.com/uc?export=download&id=1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL"
+                fileId: "1TlcMXFBfeM8Eg0Bf5Ij_jJvNXzydGCvL"
             },
             { 
                 id: "emerging_tech", 
                 name: "Emerging Technology", 
                 amharicName: "ኤመርጂንግ ቴክኖሎጂ (አዳዲስ ቴክኖሎጂዎች)", 
                 emoji: "🤖", 
-                url: "https://drive.google.com/uc?export=download&id=1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w"
+                fileId: "1HiwRvpQqsOOVrf6badGtwI7RSzvYO14w"
             },
             { 
                 id: "global_trends", 
                 name: "Global Trends", 
                 amharicName: "ግሎባል ትሬንድስ (አለም አቀፋዊ ሁኔታዎች)", 
                 emoji: "🌍", 
-                url: "https://drive.google.com/uc?export=download&id=15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-"
+                fileId: "15g-oc_cc3O-qAJwCS_pvT_pk96-QTkk-"
             },
             { 
                 id: "civics", 
                 name: "Civics", 
                 amharicName: "ሲቪክስና ስነ-ዜጋ", 
                 emoji: "⚖️", 
-                url: "https://drive.google.com/uc?export=download&id=1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx"
+                fileId: "1nXGQV88ovouctmtLX4uqG6fXWYSZRJIx"
             }
         ];
 
@@ -290,13 +287,113 @@
         const pageInfo = document.getElementById('page-info');
 
         // ============================================
-        // PDF STATE
+        // STATE
         // ============================================
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
         let currentScale = 1.2;
-        let currentCourseUrl = '';
+        let currentCourse = null;
+
+        // ============================================
+        // GET GOOGLE DRIVE PDF AS BLOB USING PREVIEW
+        // ============================================
+        function getGoogleDrivePdfUrl(fileId) {
+            // Using Google Drive's export as PDF (works with CORS)
+            return `https://drive.google.com/uc?export=download&id=${fileId}`;
+        }
+
+        // ============================================
+        // LOAD PDF FROM GOOGLE DRIVE
+        // ============================================
+        function loadPdfFromDrive(fileId) {
+            const url = getGoogleDrivePdfUrl(fileId);
+            
+            console.log('📄 Loading PDF from:', url);
+            
+            // Load PDF using PDF.js
+            pdfjsLib.getDocument(url).promise.then(pdf => {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                pageInfo.textContent = `ገጽ 1 / ${totalPages}`;
+                
+                // Hide loader
+                pdfLoader.classList.add('hidden');
+                
+                // Render first page
+                renderPage(1);
+                
+                console.log(`✅ PDF loaded: ${totalPages} pages`);
+            }).catch(err => {
+                console.error('❌ Error loading PDF:', err);
+                
+                // Show error with retry option
+                pdfLoader.classList.remove('hidden');
+                pdfLoader.innerHTML = `
+                    <div class="text-center p-6">
+                        <div class="text-5xl mb-4">⚠️</div>
+                        <p class="text-red-400 text-sm font-bold">ፒዲኤፍ መክፈት አልተቻለም</p>
+                        <p class="text-slate-500 text-xs mt-2">${err.message || 'Failed to load PDF'}</p>
+                        <p class="text-slate-600 text-xs mt-1">Please make sure the file is publicly accessible</p>
+                        <div class="mt-4 flex flex-col gap-2 items-center">
+                            <button onclick="retryLoadPdf()" class="bg-[#6366f1] text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-all">
+                                🔄 እንደገና ሞክር
+                            </button>
+                            <button onclick="useEmbedViewer()" class="text-[#00f2fe] text-xs underline">
+                                📱 በአማራጭ ዕይታ ክፈት
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // ============================================
+        // RETRY LOADING PDF
+        // ============================================
+        function retryLoadPdf() {
+            if (!currentCourse) return;
+            
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto mb-4"></div>
+                    <p class="text-slate-400 text-sm">⏳ እንደገና እየሞከረ... (Retrying...)</p>
+                </div>
+            `;
+            
+            // Clear canvas
+            canvasContainer.innerHTML = '';
+            
+            // Try loading again
+            loadPdfFromDrive(currentCourse.fileId);
+        }
+
+        // ============================================
+        // USE EMBED VIEWER (FALLBACK)
+        // ============================================
+        function useEmbedViewer() {
+            if (!currentCourse) return;
+            
+            pdfLoader.classList.remove('hidden');
+            pdfLoader.innerHTML = `
+                <div class="text-center p-4 w-full h-full">
+                    <p class="text-slate-400 text-sm mb-3">📄 በGoogle Drive እየተከፈተ...</p>
+                    <iframe 
+                        src="https://drive.google.com/file/d/${currentCourse.fileId}/preview" 
+                        class="w-full h-full rounded-xl border-0 min-h-[400px]"
+                        allow="autoplay"
+                    ></iframe>
+                    <p class="text-slate-600 text-[10px] mt-2">⚠️ If viewer doesn't load, check your internet connection</p>
+                </div>
+            `;
+            
+            // Hide canvas
+            canvasContainer.style.display = 'none';
+            
+            // Show controls
+            document.querySelector('.pdf-controls').style.display = 'none';
+        }
 
         // ============================================
         // RENDER PDF PAGE TO CANVAS
@@ -304,7 +401,7 @@
         function renderPage(pageNum, scale = currentScale) {
             if (!pdfDoc) return;
 
-            // Clear container but keep the canvas element
+            // Remove existing canvas
             const existingCanvas = canvasContainer.querySelector('canvas');
             if (existingCanvas) {
                 existingCanvas.remove();
@@ -320,8 +417,6 @@
                 
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-                
-                // Make canvas responsive
                 canvas.style.width = '100%';
                 canvas.style.height = 'auto';
                 
@@ -330,54 +425,11 @@
                     viewport: viewport
                 };
                 
-                page.render(renderContext).promise.then(() => {
-                    console.log(`✅ Page ${pageNum} rendered successfully`);
-                }).catch(err => {
-                    console.error('❌ Error rendering page:', err);
-                });
+                return page.render(renderContext).promise;
+            }).then(() => {
+                console.log(`✅ Page ${pageNum} rendered successfully`);
             }).catch(err => {
-                console.error('❌ Error getting page:', err);
-            });
-        }
-
-        // ============================================
-        // LOAD PDF FROM GOOGLE DRIVE
-        // ============================================
-        function loadPdf(url) {
-            currentCourseUrl = url;
-            
-            // Show loader, hide canvas container
-            pdfLoader.classList.remove('hidden');
-            canvasContainer.innerHTML = '';
-            
-            // Clear previous PDF
-            pdfDoc = null;
-            currentPage = 1;
-            
-            // Load PDF
-            pdfjsLib.getDocument(url).promise.then(pdf => {
-                pdfDoc = pdf;
-                totalPages = pdf.numPages;
-                pageInfo.textContent = `ገጽ 1 / ${totalPages}`;
-                
-                // Hide loader, show canvas
-                pdfLoader.classList.add('hidden');
-                
-                // Render first page
-                renderPage(1);
-                
-                console.log(`✅ PDF loaded: ${totalPages} pages`);
-            }).catch(err => {
-                console.error('❌ Error loading PDF:', err);
-                pdfLoader.innerHTML = `
-                    <div class="text-center">
-                        <p class="text-red-400 text-sm">⚠️ ፒዲኤፍ መክፈት አልተቻለም</p>
-                        <p class="text-slate-500 text-xs mt-2">${err.message}</p>
-                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-[#6366f1] rounded-lg text-xs font-bold">
-                            እንደገና ሞክር (Retry)
-                        </button>
-                    </div>
-                `;
+                console.error('❌ Render error:', err);
             });
         }
 
@@ -399,15 +451,15 @@
         }
 
         function zoomIn() {
-            currentScale += 0.2;
-            if (currentScale > 3) currentScale = 3;
-            if (pdfDoc) renderPage(currentPage);
+            if (!pdfDoc) return;
+            currentScale = Math.min(currentScale + 0.2, 3);
+            renderPage(currentPage);
         }
 
         function zoomOut() {
-            currentScale -= 0.2;
-            if (currentScale < 0.5) currentScale = 0.5;
-            if (pdfDoc) renderPage(currentPage);
+            if (!pdfDoc) return;
+            currentScale = Math.max(currentScale - 0.2, 0.5);
+            renderPage(currentPage);
         }
 
         // ============================================
@@ -479,13 +531,21 @@
         // OPEN COURSE VIEWER
         // ============================================
         function openCourseViewer(course) {
+            currentCourse = course;
+            
+            // Reset view
+            canvasContainer.style.display = 'flex';
+            document.querySelector('.pdf-controls').style.display = 'flex';
+            
             viewDashboard.classList.add('hidden');
             wrapperSearchBox.classList.add('hidden');
             viewPdfViewer.classList.remove('hidden');
             activeCourseText.innerText = `${course.emoji} ${course.name}`;
             
-            // Reset canvas container
+            // Clear canvas
             canvasContainer.innerHTML = '';
+            
+            // Show loader
             pdfLoader.classList.remove('hidden');
             pdfLoader.innerHTML = `
                 <div class="text-center">
@@ -496,7 +556,7 @@
             `;
             
             // Load PDF
-            loadPdf(course.url);
+            loadPdfFromDrive(course.fileId);
         }
 
         // ============================================
@@ -545,7 +605,7 @@
         }
 
         // ============================================
-        // TELEGRAM WEBAPP INTEGRATION
+        // TELEGRAM WEBAPP
         // ============================================
         function initTelegramWebApp() {
             if (window.Telegram && window.Telegram.WebApp) {
@@ -559,6 +619,10 @@
                 }
             }
         }
+
+        // Make functions global for inline onclick
+        window.retryLoadPdf = retryLoadPdf;
+        window.useEmbedViewer = useEmbedViewer;
 
         // ============================================
         // EVENT LISTENERS
@@ -585,13 +649,8 @@
                 viewDashboard.classList.remove('hidden');
                 wrapperSearchBox.classList.remove('hidden');
                 canvasContainer.innerHTML = '';
-                pdfLoader.classList.remove('hidden');
-                pdfLoader.innerHTML = `
-                    <div class="text-center">
-                        <div class="loader mx-auto mb-4"></div>
-                        <p class="text-slate-400 text-sm">⏳ ፒዲኤፍ እየተከፈተ ነው... (Loading PDF...)</p>
-                    </div>
-                `;
+                canvasContainer.style.display = 'flex';
+                document.querySelector('.pdf-controls').style.display = 'flex';
                 pdfDoc = null;
                 currentPage = 1;
                 totalPages = 0;
