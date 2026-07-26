@@ -1,437 +1,610 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>📚 Anthro · Read-only</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <style>
-    * {
-      -webkit-user-select: none !important;
-      -moz-user-select: none !important;
-      -ms-user-select: none !important;
-      user-select: none !important;
-      -webkit-touch-callout: none !important;
-      -webkit-tap-highlight-color: transparent;
-      outline: none !important;
-      -webkit-user-drag: none !important;
-      user-drag: none !important;
-      box-sizing: border-box;
-    }
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
-      background: #0b0d1a;
-      color: #eef2ff;
-    }
-    @media print { body { display: none !important; } }
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
-    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #a855f7, #06b6d4); border-radius: 12px; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Anthro · Read-Only Viewer</title>
+    <!-- PDF.js core (Mozilla) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        /* ----- ZERO-TOLERANCE ANTI-COPY / SELECTION LOCK ----- */
+        * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-tap-highlight-color: transparent;
+            outline: none !important;
+            -webkit-drag: none !important;
+            drag: none !important;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            background: #0b0d1a;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            overflow-x: hidden;
+            color: #eef2ff;
+            touch-action: pan-y pinch-zoom; /* allow vertical scroll + zoom, no selection */
+        }
+        /* disable print */
+        @media print {
+            body { display: none !important; }
+        }
+        /* all images/drag */
+        img, canvas, iframe {
+            pointer-events: none; /* prevent drag on canvas/images */
+            -webkit-user-drag: none;
+            user-drag: none;
+        }
+        /* kill link highlights */
+        a, button, .clickable {
+            -webkit-touch-callout: none;
+        }
 
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-      background: radial-gradient(circle at 20% 30%, #14162e, #070913);
-      overflow: hidden;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 20px;
-      background: rgba(10, 12, 30, 0.65);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      z-index: 20;
-      flex-shrink: 0;
-    }
-    .hamburger {
-      font-size: 26px;
-      cursor: pointer;
-      filter: drop-shadow(0 0 6px #a855f7);
-      transition: 0.2s;
-      background: none;
-      border: none;
-      color: #c4b5fd;
-      padding: 0 6px;
-    }
-    .hamburger:active { transform: scale(0.92); }
-    .header-title {
-      font-weight: 700;
-      font-size: 18px;
-      letter-spacing: 0.3px;
-      background: linear-gradient(135deg, #a78bfa, #22d3ee);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .mode-toggle {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 30px;
-      padding: 6px 12px;
-      font-size: 16px;
-      color: #cbd5e1;
-      cursor: pointer;
-      backdrop-filter: blur(4px);
-    }
-    .mode-toggle:active { opacity: 0.6; }
+        /* ----- GEN-Z PREMIUM DARK UI ----- */
+        :root {
+            --bg-primary: #0b0d1a;
+            --bg-card: rgba(18, 22, 40, 0.8);
+            --border-glow: #00e5ff;
+            --accent-purple: #b388ff;
+            --accent-pink: #ff6ec7;
+            --text-light: #f0f3ff;
+            --text-muted: #a5b3d9;
+            --shadow-neon: 0 8px 32px rgba(0, 229, 255, 0.2);
+        }
+        body {
+            background: radial-gradient(circle at 20% 30%, #141b33, #070912);
+            backdrop-filter: blur(2px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 0 40px 0;
+        }
 
-    .main-area {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-    }
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: -280px;
-      width: 280px;
-      height: 100vh;
-      background: rgba(12, 14, 33, 0.96);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-right: 1px solid rgba(255,255,255,0.04);
-      transition: left 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-      z-index: 100;
-      padding: 28px 16px 20px;
-      overflow-y: auto;
-      box-shadow: 8px 0 40px rgba(0,0,0,0.7);
-    }
-    .sidebar.open { left: 0; }
-    .sidebar-close {
-      background: none;
-      border: none;
-      color: #94a3b8;
-      font-size: 28px;
-      float: right;
-      margin-top: -8px;
-      cursor: pointer;
-    }
-    .sidebar-close:active { opacity: 0.5; }
-    .sidebar h2 {
-      font-size: 18px;
-      margin: 24px 0 18px 0;
-      font-weight: 600;
-      letter-spacing: -0.2px;
-      background: linear-gradient(135deg, #c084fc, #38bdf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .course-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .course-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.02);
-      border: 1px solid transparent;
-      transition: 0.2s;
-      font-size: 15px;
-      font-weight: 500;
-      color: #e0e7ff;
-      cursor: pointer;
-    }
-    .course-item:active { transform: scale(0.97); background: rgba(168, 85, 247, 0.12); border-color: #7c3aed40; }
-    .course-item .emoji { font-size: 22px; filter: drop-shadow(0 0 4px #a855f770); }
-    .course-item.active {
-      background: linear-gradient(135deg, #6d28d930, #0891b230);
-      border-color: #7c3aed70;
-      box-shadow: 0 0 20px #7c3aed20;
-    }
+        /* main container */
+        .app-wrapper {
+            max-width: 480px;
+            width: 100%;
+            background: rgba(10, 12, 28, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 36px 36px 0 0;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.1);
+            overflow: hidden;
+            padding: 12px 16px 24px;
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            margin-top: 10px;
+        }
 
-    .viewer {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 12px 40px;
-      scroll-behavior: smooth;
-      background: radial-gradient(ellipse at 50% 0%, #11132b, #070912);
-    }
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-top: 12px;
-      padding-bottom: 24px;
-    }
-    .dash-card {
-      background: rgba(255,255,255,0.02);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      border: 1px solid rgba(255,255,255,0.03);
-      border-radius: 28px;
-      padding: 20px 12px 16px;
-      text-align: center;
-      transition: 0.2s;
-      box-shadow: 0 8px 24px -12px #00000080;
-      cursor: pointer;
-    }
-    .dash-card:active { transform: scale(0.96); background: rgba(168, 85, 247, 0.08); border-color: #7c3aed50; }
-    .dash-card .emoji-big { font-size: 38px; display: block; margin-bottom: 6px; }
-    .dash-card .label { font-size: 14px; font-weight: 600; color: #d4daf0; letter-spacing: -0.2px; }
+        /* ----- DASHBOARD HEADER ----- */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 4px 20px 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #b388ff, #00e5ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .badge {
+            background: rgba(0, 229, 255, 0.15);
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #00e5ff;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            backdrop-filter: blur(4px);
+        }
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            padding: 6px 14px;
+            color: #fff;
+            font-size: 0.8rem;
+            backdrop-filter: blur(4px);
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .theme-toggle:hover {
+            background: rgba(0, 229, 255, 0.1);
+            border-color: #00e5ff;
+        }
 
-    .pdf-container {
-      max-width: 100%;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-    .pdf-container canvas {
-      width: 100%;
-      height: auto;
-      background: #161a30;
-      border-radius: 12px;
-      box-shadow: 0 12px 40px -8px #000000cc;
-      border: 1px solid rgba(255,255,255,0.02);
-      pointer-events: none;
-    }
-    .pdf-loader {
-      text-align: center;
-      padding: 40px 20px;
-      color: #94a3b8;
-      font-size: 15px;
-    }
-    .spinner {
-      display: inline-block;
-      width: 30px;
-      height: 30px;
-      border: 3px solid #2d2f4a;
-      border-top: 3px solid #a855f7;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+        /* search bar (only filters course tiles) */
+        .search-bar {
+            margin: 16px 0 20px 0;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 60px;
+            padding: 6px 18px;
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(4px);
+        }
+        .search-bar input {
+            background: transparent;
+            border: none;
+            padding: 12px 6px;
+            width: 100%;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .search-bar input::placeholder {
+            color: #6a7ab0;
+            font-weight: 300;
+        }
+        .search-bar span {
+            color: #00e5ff;
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
 
-    .light-mode {
-      background: #f0f2fc;
-      color: #1e1f38;
-    }
-    .light-mode .header { background: rgba(240, 242, 252, 0.8); border-bottom: 1px solid #d0d5e8; }
-    .light-mode .sidebar { background: rgba(240, 242, 252, 0.97); border-right: 1px solid #d0d5e8; }
-    .light-mode .viewer { background: radial-gradient(ellipse at 50% 0%, #eaeef9, #d9def0); }
-    .light-mode .dash-card { background: rgba(255,255,255,0.4); border-color: #cdd3e8; }
-    .light-mode .course-item { color: #1e1f38; }
-    .light-mode .header-title { background: linear-gradient(135deg, #7c3aed, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .light-mode .pdf-container canvas { background: #fefeff; border-color: #d0d5e8; }
-    .light-mode .mode-toggle { background: rgba(0,0,0,0.04); border-color: #b0b9d4; color: #1e1f38; }
+        /* course grid (7 tiles) */
+        .course-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+            padding-bottom: 18px;
+        }
+        .course-tile {
+            background: rgba(20, 26, 52, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            border-radius: 20px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            color: #eef2ff;
+        }
+        .course-tile:hover {
+            border-color: #ff6ec7;
+            box-shadow: 0 0 20px rgba(255, 110, 199, 0.15);
+            transform: scale(1.01);
+            background: rgba(30, 38, 70, 0.8);
+        }
+        .course-tile .emoji {
+            font-size: 1.9rem;
+            filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.3));
+            width: 44px;
+            text-align: center;
+        }
+        .course-tile .name {
+            font-weight: 600;
+            font-size: 1rem;
+            letter-spacing: -0.2px;
+            background: linear-gradient(135deg, #f0f3ff 70%, #b388ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .course-tile .arrow {
+            margin-left: auto;
+            color: #4a5a8a;
+            font-size: 1.2rem;
+        }
 
-    @media (max-width: 480px) {
-      .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-      .dash-card { padding: 14px 8px; }
-      .dash-card .emoji-big { font-size: 30px; }
-      .header-title { font-size: 15px; }
-    }
-  </style>
+        /* ---- PDF VIEWER (Canvas infinite) ---- */
+        .pdf-viewer-container {
+            display: none; /* hidden until course selected */
+            flex-direction: column;
+            margin-top: 12px;
+            border-radius: 28px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 2px 6px 2px;
+            border: 1px solid rgba(0, 229, 255, 0.1);
+        }
+        .pdf-viewer-container.active {
+            display: flex;
+        }
+        .pdf-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 14px 12px 14px;
+            color: #a5b3d9;
+        }
+        .pdf-controls button {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #b388ff;
+            border-radius: 40px;
+            padding: 6px 18px;
+            font-weight: 500;
+            backdrop-filter: blur(4px);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: 0.15s;
+            pointer-events: auto; /* allow interaction */
+        }
+        .pdf-controls button:hover {
+            background: rgba(0, 229, 255, 0.1);
+            border-color: #00e5ff;
+        }
+        #pdf-canvas-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 0 2px;
+            max-height: 80vh;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 24px;
+        }
+        #pdf-canvas-wrapper canvas {
+            width: 100% !important;
+            height: auto !important;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+            background: white;
+            pointer-events: none; /* no interaction on canvas itself */
+            -webkit-user-drag: none;
+            user-drag: none;
+        }
+
+        /* back button */
+        .back-dashboard {
+            background: transparent;
+            border: none;
+            color: #00e5ff;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 0;
+            cursor: pointer;
+            font-size: 0.85rem;
+            opacity: 0.7;
+            transition: 0.2s;
+        }
+        .back-dashboard:hover {
+            opacity: 1;
+        }
+
+        /* dark mode overrides */
+        .light-mode {
+            --bg-primary: #f2f5ff;
+            --bg-card: rgba(255, 255, 255, 0.7);
+            --text-light: #0b0d1a;
+            --text-muted: #2a2f4a;
+        }
+        .light-mode .app-wrapper {
+            background: rgba(240, 244, 255, 0.8);
+            backdrop-filter: blur(16px);
+        }
+        .light-mode .course-tile {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        .light-mode .course-tile .name {
+            -webkit-text-fill-color: #0b0d1a;
+            background: none;
+            color: #0b0d1a;
+        }
+        .light-mode .brand h1 {
+            -webkit-text-fill-color: #1a1f3a;
+            background: linear-gradient(135deg, #3f3f8a, #0077be);
+            -webkit-background-clip: text;
+        }
+        .light-mode .search-bar {
+            background: rgba(0,0,0,0.03);
+        }
+        .light-mode .search-bar input {
+            color: #0b0d1a;
+        }
+
+        /* hidden helper */
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
-<div id="app">
-  <div class="header">
-    <button class="hamburger" id="menuToggle" aria-label="menu">☰</button>
-    <span class="header-title" id="headerCourse">📖 Anthropology</span>
-    <button class="mode-toggle" id="themeToggle">🌓</button>
-  </div>
+<div class="app-wrapper" id="appWrapper">
+    <!-- DASHBOARD -->
+    <div id="dashboardView">
+        <div class="dashboard-header">
+            <div class="brand">
+                <h1>📘 UniView</h1>
+                <span class="badge">read-only</span>
+            </div>
+            <div class="theme-toggle" id="themeToggle">🌓 Light</div>
+        </div>
 
-  <div class="main-area">
-    <div class="sidebar" id="sidebar">
-      <button class="sidebar-close" id="closeSidebar">✕</button>
-      <h2>📚 Courses</h2>
-      <div class="course-list" id="courseList"></div>
+        <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="courseSearch" placeholder="Filter courses..." autocomplete="off">
+        </div>
+
+        <div class="course-grid" id="courseGrid">
+            <!-- 7 courses with emojis -->
+            <div class="course-tile" data-course="logic"><span class="emoji">🧠</span><span class="name">Logic and Critical Thinking</span><span class="arrow">➜</span></div>
+            <div class="course-tile" data-course="psychology"><span class="emoji">👥</span><span class="name">Psychology</span><span class="arrow">➜</span></div>
+            <div class="course-tile" data-course="anthropology"><span class="emoji">🦴</span><span class="name">Anthropology</span><span class="arrow">➜</span></div>
+            <div class="course-tile" data-course="economics"><span class="emoji">📈</span><span class="name">Economics</span><span class="arrow">➜</span></div>
+            <div class="course-tile" data-course="emerging"><span class="emoji">🤖</span><span class="name">Emerging Technology</span><span class="arrow">➜</span></div>
+            <div class="course-tile" data-course="global"><span class="emoji">🌍</span><span class="name">Global Trends</span><span class="arrow">➜</span></div>
+            <div class="course-tile" data-course="civics"><span class="emoji">⚖️</span><span class="name">Civics</span><span class="arrow">➜</span></div>
+        </div>
     </div>
 
-    <div class="viewer" id="viewer">
-      <div id="renderTarget"></div>
+    <!-- PDF VIEWER (hidden by default) -->
+    <div id="pdfView" class="pdf-viewer-container">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <button class="back-dashboard" id="backToDash">← Dashboard</button>
+            <span style="font-size: 0.7rem; background: rgba(0,229,255,0.1); padding: 4px 14px; border-radius: 40px; border: 1px solid rgba(0,229,255,0.2);">🦴 Anthropology</span>
+        </div>
+        <div class="pdf-controls">
+            <span id="pageIndicator">Page 1 / 1</span>
+            <div>
+                <button id="prevPage">◀</button>
+                <button id="nextPage">▶</button>
+            </div>
+        </div>
+        <div id="pdf-canvas-wrapper"></div>
     </div>
-  </div>
 </div>
 
 <script>
-  (function() {
-    // ─── SECURITY ────────────────────────────────────────────────
-    document.addEventListener('contextmenu', e => e.preventDefault(), true);
-    document.addEventListener('keydown', e => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-      if (ctrl && (key === 'c' || key === 'x' || key === 'a' || key === 'u')) {
-        e.preventDefault(); e.stopPropagation(); return false;
-      }
-      if (e.key === 'F12') { e.preventDefault(); return false; }
-      if (ctrl && e.shiftKey && (key === 'i' || key === 'j')) { e.preventDefault(); return false; }
-      if (ctrl && key === 'p') { e.preventDefault(); return false; }
-      if (e.key === 'PrintScreen') { e.preventDefault(); return false; }
-    }, true);
-    document.addEventListener('dragstart', e => e.preventDefault(), true);
-    document.addEventListener('selectstart', e => e.preventDefault(), true);
+    (function() {
+        "use strict";
 
-    // ─── EMBEDDED ANTHROPOLOGY PDF (Base64) ──────────────────────
-    // This is the actual PDF content you provided, converted to base64.
-    // Since the PDF is large, we use a compressed version.
-    // For demo purposes, we use a well-known PDF that contains similar academic content.
-    // In production, you would replace this with your actual base64 encoded PDF.
-    const ANTHRO_PDF_BASE64 = ''; // Would contain the full base64 of your PDF
+        // ---------- ZERO-TOLERANCE SECURITY HOOKS ----------
+        // 1. Context menu kill (right click / long press)
+        window.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; }, true);
+        // 2. Disable keyboard shortcuts: Ctrl+C, Ctrl+X, Ctrl+A, Ctrl+U, F12, etc.
+        window.addEventListener('keydown', (e) => {
+            const ctrl = e.ctrlKey || e.metaKey;
+            const key = e.key.toLowerCase();
+            // block copy, cut, select all, view source, devtools
+            if (ctrl && (key === 'c' || key === 'x' || key === 'a' || key === 'u')) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.key === 'F12' || (ctrl && e.shiftKey && (key === 'i' || key === 'j'))) {
+                e.preventDefault();
+                return false;
+            }
+            // Cmd+Option+U / Ctrl+Shift+U
+            if (ctrl && e.altKey && key === 'u') {
+                e.preventDefault();
+                return false;
+            }
+            // block print dialog
+            if (ctrl && key === 'p') {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+        // 3. Disable text selection via additional CSS + prevent drag
+        document.addEventListener('selectstart', (e) => e.preventDefault(), true);
+        document.addEventListener('dragstart', (e) => e.preventDefault(), true);
 
-    // For now, we use a public PDF that works and has academic content
-    // You can replace this with your own base64 encoded PDF
-    const ANTHRO_PDF_URL = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf';
+        // ---------- PDF.JS SETUP (ANTHROPOLOGY ONLY) ----------
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    const courses = [
-      { id: 'logic', emoji: '🧠', name: 'Logic and Critical Thinking', pdf: '' },
-      { id: 'psychology', emoji: '👥', name: 'Psychology', pdf: '' },
-      { id: 'anthropology', emoji: '🦴', name: 'Anthropology', pdf: ANTHRO_PDF_URL },
-      { id: 'economics', emoji: '📈', name: 'Economics', pdf: '' },
-      { id: 'emerging', emoji: '🤖', name: 'Emerging Technology', pdf: '' },
-      { id: 'global', emoji: '🌍', name: 'Global Trends', pdf: '' },
-      { id: 'civics', emoji: '⚖️', name: 'Civics', pdf: '' }
-    ];
+        // Course PDF mapping: only anthropology uses external URL (provided)
+        const COURSE_PDF_MAP = {
+            anthropology: 'https://t.me/AdvanceLinkRobot?start=file_8622_8bd8739aa67e9e41'
+            // other courses would have placeholder URLs; we only implement anthropology.
+        };
 
-    let currentCourseId = 'anthropology';
-    let pdfDoc = null;
+        // UI elements
+        const dashboardView = document.getElementById('dashboardView');
+        const pdfView = document.getElementById('pdfView');
+        const pdfWrapper = document.getElementById('pdf-canvas-wrapper');
+        const pageIndicator = document.getElementById('pageIndicator');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        const backBtn = document.getElementById('backToDash');
+        const courseSearch = document.getElementById('courseSearch');
+        const courseTiles = document.querySelectorAll('.course-tile');
+        const themeToggle = document.getElementById('themeToggle');
 
-    const viewer = document.getElementById('viewer');
-    const renderTarget = document.getElementById('renderTarget');
-    const sidebar = document.getElementById('sidebar');
-    const courseList = document.getElementById('courseList');
-    const menuToggle = document.getElementById('menuToggle');
-    const closeSidebar = document.getElementById('closeSidebar');
-    const headerCourse = document.getElementById('headerCourse');
-    const themeToggle = document.getElementById('themeToggle');
+        // State
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let isRendering = false;
+        let currentCourse = '';
 
-    function renderCourseList() {
-      courseList.innerHTML = '';
-      courses.forEach(c => {
-        const div = document.createElement('div');
-        div.className = `course-item${c.id === currentCourseId ? ' active' : ''}`;
-        div.innerHTML = `<span class="emoji">${c.emoji}</span> ${c.name}`;
-        div.dataset.id = c.id;
-        div.addEventListener('click', () => {
-          if (c.id === currentCourseId) return;
-          currentCourseId = c.id;
-          renderCourseList();
-          loadCourse(c.id);
-          closeSidebar.click();
-        });
-        courseList.appendChild(div);
-      });
-    }
+        // ---- render page on canvas ----
+        function renderPage(pageNum) {
+            if (!pdfDoc) return;
+            if (pageNum < 1) pageNum = 1;
+            if (pageNum > totalPages) pageNum = totalPages;
+            currentPage = pageNum;
+            pageIndicator.textContent = `Page ${currentPage} / ${totalPages}`;
 
-    async function loadCourse(courseId) {
-      const course = courses.find(c => c.id === courseId);
-      if (!course) return;
-      headerCourse.textContent = `${course.emoji} ${course.name}`;
-      renderTarget.innerHTML = '';
+            // clear wrapper but keep canvas refs? we rebuild
+            pdfWrapper.innerHTML = '';
+            // For continuous scroll we render all pages from 1 to totalPages
+            // but we only render requested page? Actually spec: infinite scroll sequential.
+            // We render all pages continuously for smooth reading (no split)
+            for (let i = 1; i <= totalPages; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.setAttribute('data-page', i);
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+                canvas.style.marginBottom = '8px';
+                canvas.style.background = 'white';
+                pdfWrapper.appendChild(canvas);
+            }
 
-      if (!course.pdf) {
-        renderDashboard();
-        return;
-      }
+            // render all pages
+            const canvases = pdfWrapper.querySelectorAll('canvas');
+            for (let i = 0; i < canvases.length; i++) {
+                const pageIdx = i + 1;
+                renderPageToCanvas(pageIdx, canvases[i]);
+            }
 
-      renderTarget.innerHTML = `<div class="pdf-loader"><div class="spinner"></div><div>Loading document ...</div></div>`;
-
-      try {
-        const loadingTask = pdfjsLib.getDocument(course.pdf);
-        pdfDoc = await loadingTask.promise;
-        renderTarget.innerHTML = `<div class="pdf-container" id="pdfContainer"></div>`;
-        renderAllPages();
-      } catch (err) {
-        renderTarget.innerHTML = `<div class="pdf-loader" style="color:#f87171;">⚠️ Failed to load PDF. Check URL.</div>`;
-        console.warn('PDF load error', err);
-      }
-    }
-
-    function renderAllPages() {
-      if (!pdfDoc) return;
-      const container = document.getElementById('pdfContainer');
-      if (!container) return;
-      container.innerHTML = '';
-      const totalPages = pdfDoc.numPages;
-
-      function renderPage(pageNum) {
-        if (pageNum > totalPages) return;
-        pdfDoc.getPage(pageNum).then(page => {
-          const scale = 1.8;
-          const viewport = page.getViewport({ scale });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          canvas.style.width = '100%';
-          canvas.style.height = 'auto';
-          canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
-          container.appendChild(canvas);
-          const ctx = canvas.getContext('2d', { alpha: false });
-          page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => {
-            renderPage(pageNum + 1);
-          }).catch(err => console.warn('page render error', err));
-        }).catch(err => console.warn('page get error', err));
-      }
-      renderPage(1);
-    }
-
-    function renderDashboard() {
-      let html = `<div class="dashboard-grid">`;
-      courses.forEach(c => {
-        html += `
-          <div class="dash-card" data-id="${c.id}">
-            <span class="emoji-big">${c.emoji}</span>
-            <div class="label">${c.name}</div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-      renderTarget.innerHTML = html;
-      renderTarget.querySelectorAll('.dash-card').forEach(el => {
-        el.addEventListener('click', () => {
-          const id = el.dataset.id;
-          if (id === currentCourseId) return;
-          currentCourseId = id;
-          renderCourseList();
-          loadCourse(id);
-        });
-      });
-    }
-
-    function init() {
-      renderCourseList();
-      const defaultCourse = courses.find(c => c.id === 'anthropology');
-      if (defaultCourse && defaultCourse.pdf) {
-        loadCourse('anthropology');
-      } else {
-        renderDashboard();
-      }
-
-      menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-      closeSidebar.addEventListener('click', () => sidebar.classList.remove('open'));
-      document.addEventListener('click', (e) => {
-        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) {
-          sidebar.classList.remove('open');
+            // scroll to current page approx
+            const targetCanvas = pdfWrapper.querySelector(`canvas[data-page="${currentPage}"]`);
+            if (targetCanvas) {
+                targetCanvas.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
         }
-      });
 
-      let light = false;
-      themeToggle.addEventListener('click', () => {
-        light = !light;
-        document.getElementById('app').classList.toggle('light-mode', light);
-        themeToggle.textContent = light ? '☀️' : '🌓';
-      });
-    }
+        function renderPageToCanvas(pageNum, canvas) {
+            pdfDoc.getPage(pageNum).then(page => {
+                const viewport = page.getViewport({ scale: 1.5 }); // scale for readability
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport,
+                    background: 'white',
+                };
+                page.render(renderContext).promise.then(() => {
+                    // no text layer -> pure graphic
+                });
+            }).catch(err => {
+                console.warn('page render error', err);
+            });
+        }
 
-    init();
-  })();
+        // ---- load PDF from URL ----
+        function loadPDF(url) {
+            if (!url) {
+                alert('PDF URL not configured for this course.');
+                return;
+            }
+            // reset
+            pdfWrapper.innerHTML = '';
+            pdfDoc = null;
+            currentPage = 1;
+
+            pdfjsLib.getDocument(url).promise.then(doc => {
+                pdfDoc = doc;
+                totalPages = doc.numPages;
+                pageIndicator.textContent = `Page 1 / ${totalPages}`;
+                renderPage(1);
+                // enable controls
+                prevBtn.disabled = false;
+                nextBtn.disabled = false;
+            }).catch(err => {
+                alert('Failed to load PDF. Ensure valid URL and CORS.');
+                console.error(err);
+            });
+        }
+
+        // ---- show dashboard ----
+        function showDashboard() {
+            dashboardView.style.display = 'block';
+            pdfView.classList.remove('active');
+            pdfView.style.display = 'none';
+            // reset search
+            courseSearch.value = '';
+            filterCourses('');
+        }
+
+        // ---- show pdf viewer ----
+        function showPDFViewer(courseKey) {
+            dashboardView.style.display = 'none';
+            pdfView.style.display = 'flex';
+            pdfView.classList.add('active');
+            const url = COURSE_PDF_MAP[courseKey];
+            if (url) {
+                loadPDF(url);
+            } else {
+                alert('No PDF available for this course (placeholder).');
+                showDashboard();
+            }
+        }
+
+        // ---- filter courses ----
+        function filterCourses(query) {
+            const q = query.toLowerCase().trim();
+            courseTiles.forEach(tile => {
+                const name = tile.querySelector('.name')?.textContent?.toLowerCase() || '';
+                if (q === '' || name.includes(q)) {
+                    tile.style.display = 'flex';
+                } else {
+                    tile.style.display = 'none';
+                }
+            });
+        }
+
+        // ---- event listeners ----
+        courseTiles.forEach(tile => {
+            tile.addEventListener('click', (e) => {
+                const course = tile.dataset.course;
+                if (course === 'anthropology') {
+                    currentCourse = course;
+                    showPDFViewer(course);
+                } else {
+                    alert(`📘 "${tile.querySelector('.name').textContent}" PDF not available (demo only Anthropology).`);
+                }
+            });
+        });
+
+        courseSearch.addEventListener('input', (e) => {
+            filterCourses(e.target.value);
+        });
+
+        backBtn.addEventListener('click', showDashboard);
+
+        prevBtn.addEventListener('click', () => {
+            if (pdfDoc && currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+            }
+        });
+        nextBtn.addEventListener('click', () => {
+            if (pdfDoc && currentPage < totalPages) {
+                currentPage++;
+                renderPage(currentPage);
+            }
+        });
+
+        // theme toggle
+        let lightMode = false;
+        themeToggle.addEventListener('click', () => {
+            lightMode = !lightMode;
+            document.body.classList.toggle('light-mode', lightMode);
+            themeToggle.textContent = lightMode ? '🌙 Dark' : '🌓 Light';
+        });
+
+        // ---- start : dashboard default ----
+        showDashboard();
+
+        // additional security: block print via css already, plus no print dialog.
+        // override any remaining selection
+        document.body.style.webkitUserSelect = 'none';
+        document.body.style.userSelect = 'none';
+
+        console.log('🔒 Secure Read-Only Viewer · Anthropology PDF ready.');
+    })();
 </script>
 </body>
 </html>
